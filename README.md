@@ -1,0 +1,162 @@
+<div align="center">
+
+<h1>YukiMind</h1>
+
+<p>有长期记忆、能使用工具与持久工作环境的 QQ AI Agent</p>
+
+<p>
+  <a href="https://github.com/Rick2857/YukiMind/releases/tag/v3.8.2"><img src="https://img.shields.io/badge/Release-3.8.2-blue" alt="YukiMind 3.8.2"></a>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/Deploy-Docker%20Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose">
+  <a href="https://github.com/Rick2857/YukiMind/actions/workflows/quality.yml"><img src="https://github.com/Rick2857/YukiMind/actions/workflows/quality.yml/badge.svg" alt="Quality"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License"></a>
+</p>
+
+[下载 3.8.2](https://github.com/Rick2857/YukiMind/releases/tag/v3.8.2) · [本版更新](docs/releases/v3.8.2.md) · [启动与升级](docs/upgrade-3.8.2.md) · [使用帮助](docs/help.md) · [公开范围](PUBLIC_RELEASE_SCOPE.md)
+
+</div>
+
+> YukiMind 的当前源码、安装包与容器镜像由 `Rick2857/YukiMind` 发布；项目既有源码及历史发布记录可在 [`YuanYeYouTao/Yuki-QQbot`](https://github.com/YuanYeYouTao/Yuki-QQbot) 核对。历史来源声明不改变各文件原有的版权和许可。
+
+> YukiMind 是独立的非官方第三方互操作项目，与腾讯公司（Tencent）及 QQ 无隶属、合作、授权或背书关系；“QQ”“腾讯”等名称及标识属于其各自权利人。
+
+Yuki 可以在 QQ 私聊和群聊中交流，记住人与共同经历，读取图片、语音和文件，并通过工具搜索资料、发送消息、执行代码和处理后台任务。人格、记忆和关系保存在自己的数据库中，切换 QQ 账号或网关时可以继续沿用。
+
+**3.8.2** 带来了持久工作环境、接收语音识别、统一的主 Agent 入口，以及成员提及、跨会话消息和任务恢复方面的修复。工作环境需要单独部署；WebUI 尚未提供。
+
+## Yuki 能做什么
+
+| 能力 | 使用方式 |
+| --- | --- |
+| 长期聊天与记忆 | 在群聊、私聊中持续交流，查询旧事，明确要求记住、纠正或删除事实 |
+| 图片、语音和附件 | 发送或引用图片、语音、视频、文档，让 Yuki 查看、转写或整理 |
+| QQ 社交操作 | 查询成员、结构化 @、发送群消息或私聊、撤回自己的消息；目标与权限由后端校验 |
+| 搜索与扩展 | 使用配置好的联网工具、MCP 服务和插件处理外部信息 |
+| 持久工作环境 | 保存项目与文件，运行 Python、Node.js 或 Shell，安装依赖并交付结果 |
+| 后台任务与自动化 | 启动作业后继续聊天，随后查询进度；按已授予的权限执行定时任务和续跑 |
+| 语音与表情 | 可选 Genie-TTS 语音发送，以及表情包检索、分类和发送 |
+
+这些能力取决于部署配置、模型能力和授权范围。任务被接纳、执行完成和消息发送分别有状态记录；调用工具不等于结果已经交付。
+
+## 持久工作环境
+
+启用后，Yuki 拥有全会话共用的 Linux 工作目录，可以保存下载文件、Git 项目、脚本与依赖。文件工具和终端操作同一份文件，普通工作文件不再按 24 小时过期。
+
+- 预装 Bash、Python、Node.js、Git 和基础编译工具，支持 pip、npm，以及由 Manager 管理的 apt 安装和环境检查点。
+- 终端支持交互输入、增量输出、取消和后台执行。可以先启动一个任务，继续处理消息，再回来看结果。
+- Bot 或 Manager 重启时，环境进程可以继续运行；环境本身重启后，普通任务标记中断，已登记服务按策略恢复。
+- 选定文件发布为不可变快照后，通过 QQ 发送链路交付；旧 `artifact_id` 保持兼容。
+
+默认家目录容量 2 GiB，容器内存上限 512 MiB，最多一个主要执行任务、四个终端会话和两个内部服务。环境没有浏览器或桌面，也不挂载 Bot 数据库、QQ 凭据或宿主 Docker 控制接口。
+
+这是一项**单独部署的可选能力**，需要 Linux 宿主、gVisor 和 Yuki Manager；普通 Bot 部署包不会自动安装。配置、资源限制与恢复方式见[持久环境说明](docs/operations/persistent-environment.zh-CN.md)（[English](docs/operations/persistent-environment.md)）。
+
+## 记忆与跨会话连续性
+
+长期记忆用于保存稳定事实、偏好和有意义的经历；普通自动提取会聚合消息，明确要求记住、纠正和删除时则即时处理。长会话通过 Rollup 压缩历史，原始历史仍有独立查询入口。
+
+`short_state` 是全局共用、有界且会过期的短期记录区，用于暂存跨会话信息；它与长期记忆、持久文件分开。群聊和私聊不会自动拼成同一份完整聊天历史。
+
+记忆读取仍有具体边界：历史共同群关系可以开放人物结构化事实，**其中可能包含私聊来源的事实**，但不开放他人的原始私聊或私有证据。部署前请阅读 [Memory 的范围与权限](docs/architecture/memory-v2.md)。模型提取和回忆可能出错，重要信息应核对来源。
+
+## 图片、语音、文件与联网
+
+- **图片与视频**：支持图片输入的模型可直接查看当前或引用图片。MP4/MOV 视频通过 FFmpeg 抽帧进入同一个主 Agent，不分析音轨，也不保证覆盖所有瞬间。
+- **接收语音**：私聊、符合回复策略的群聊及引用语音经 Qwen ASR 转写，进入聊天历史、搜索和 Rollup。可复用千问连接，与 Genie-TTS 语音发送独立配置。见[语音识别说明](docs/speech/recognition.md)。
+- **文件阅读**：支持文本、代码、CSV/JSON、PDF 文字、DOCX 和 XLSX 的有界提取。扫描 PDF 不做 OCR，表格公式不重算，宏和附件中的代码不会因阅读而执行。后续重新查看时可引用原附件。
+- **联网**：可配置 Provider 原生搜索或 Tavily。当前项目的 DeepSeek Responses 接入使用 Tavily 提供搜索，需要 `WEB_MODE=tavily` 和 `TAVILY_API_KEY`；`both` 保留两种工具，`disabled` 禁止联网。
+
+聊天、插件唤醒、自动化和任务续跑使用统一主 Agent 与完整工具声明。工具结构在部署内保持固定，执行时再检查权限与预算；这减少请求前缀变化，但不保证 Provider 的缓存命中率。
+
+## 配置与启动
+
+基础部署需要：
+
+- Linux amd64，或运行 Linux 容器的 Windows Docker Desktop；
+- Docker Engine 和 Docker Compose v2；
+- 可用的模型服务配置，支持项目接入的 Chat Completions 或 Responses 协议；
+- NapCat QQ 网关及登录账号。
+
+NapCat 是公开部署包唯一自动管理的第三方 QQ 网关，不受本仓库 MIT License 覆盖。源码仍保留 SnowLuma 的 OneBot 兼容适配，但公开 Compose、安装脚本和配置向导不会下载或启动 SnowLuma；如需手工接入，必须先自行核对并满足上游授权条款。详见[第三方许可说明](THIRD_PARTY_NOTICES.md)。
+
+从 [3.8.2 Release](https://github.com/Rick2857/YukiMind/releases/tag/v3.8.2) 下载部署包，解压后可以手动填写 `.env` 和模型配置，也可以使用配置向导。
+
+Linux：
+
+```bash
+curl -fLO https://github.com/Rick2857/YukiMind/releases/download/v3.8.2/install.sh
+chmod +x install.sh
+./install.sh
+```
+
+Windows PowerShell：
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/Rick2857/YukiMind/releases/download/v3.8.2/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+**向导只负责配置。** 在空目录中下载并校验部署包，在已有部署中保留 Compose、插件和数据；确认后备份并写入配置。它不会停服、迁移数据库、启动服务或切换网关。
+
+首次部署在配置完成后，进入部署目录执行：
+
+```bash
+docker compose config --quiet
+docker compose pull
+docker compose run --rm --no-deps --entrypoint qq-ai-bot-cli bot init-db
+docker compose up -d
+```
+
+还需完成 NapCat QQ 登录，并按所选插件和语音组件的说明进行初始化。完整步骤见[首次启动与升级指南](docs/upgrade-3.8.2.md)。已有部署请直接按该指南升级，保留原项目名、Compose 覆盖文件和挂载配置。
+
+正式镜像为 `ghcr.io/rick2857/yukimind:3.8.2`；可选 TTS Worker 镜像为 `ghcr.io/rick2857/yukimind-genie-tts-worker:3.8.2`。官方 Worker 不包含 `e2k`、其训练权重或外部声线资产。Release 同时提供 `SHA256SUMS` 和两个镜像的 SPDX SBOM；单独下载的环境模板附件名为 `default.env.example`，压缩包内仍为 `.env.example`。
+
+## 升级与日常维护
+
+3.8.2 使用数据库版本 **0059**、Plugin API **2.0**。较旧的数据库必须先满足迁移前提，不能通过 `stamp` 跳过迁移。0058 会清理来源无法解析的旧搜索缓存，0059 会保留累计预算并暂停归属有歧义的旧任务；升级前必须备份。旧插件的 `llm.generate` / `agent.run` 已统一到主入口，依赖旧独立生成语义的插件需要适配。
+
+升级前保存一致的数据库、配置、插件及文件备份；持久环境还需保存家目录与运行回执。暂停写入只涉及 Bot 和相关 Manager，不需要关闭整个 Docker 或 QQ 网关。回退时应先保全升级后的新消息、文件和回执，详见[升级指南](docs/upgrade-3.8.2.md)。
+
+```bash
+docker compose ps
+docker compose logs --tail 200 bot
+docker compose exec bot qq-ai-bot-cli gateway doctor --provider napcat
+```
+
+所有命令沿用部署时的 Compose 参数。同一 QQ 只允许一条活动连接。源码中的 SnowLuma 适配仅供已经独立取得并手工部署该上游软件的操作者使用，见[手工接入边界](docs/deployment/snowluma.md)。
+
+## 架构与开发
+
+开发前阅读 [共同架构约束](docs/architecture/development-contract.md) 与
+[架构文档索引](docs/architecture/README.md)。历史任务书不替代现行合同。
+
+一个数据库对应一个长期存在的 Yuki。人物、群空间、QQ 账号和网关连接分别建模，聊天历史与关系不绑定在某一次登录连接上。工具由后端执行权限、预算、幂等和审计检查。
+
+目前提供 QQ 交互、CLI 和供管理界面复用的 Control Plane 业务层，**尚未提供 Yuki 管理 WebUI 或管理 HTTP API**。
+
+```bash
+uv sync --extra dev
+uv run ruff format --check
+uv run ruff check
+uv run mypy src
+uv run pytest
+```
+
+开发时按改动范围选择定向验证；发布流程还会验证迁移、镜像和无源码部署。
+
+| 文档 | 内容 |
+| --- | --- |
+| [使用帮助](docs/help.md) | 聊天、命令与日常操作 |
+| [架构说明](docs/architecture/canonical-runtime.md) | 人物、空间、账号和会话的关系 |
+| [开发约束](docs/architecture/development-contract.md) | 事件 ID、解耦边界、固定工具、续跑和事务原则 |
+| [Rollup](docs/architecture/conversation-rollup.md) | 长会话的历史压缩 |
+| [Memory](docs/architecture/memory-v2.md) | 记忆提取、检索和权限 |
+| [Plugin API 2.0](docs/plugin-development/index.md) | 插件开发与能力边界 |
+| [MCP](docs/mcp/architecture.md) | 外部工具接入 |
+| [语音发送](docs/speech/operations.md) | Genie-TTS 部署与运维 |
+| [版本化发布](docs/operations/versioned-docker-release.md) | 镜像、下载包与发布流程 |
+| [CHANGELOG](CHANGELOG.md) | 历史变更 |
+
+## License
+
+YukiMind 自有代码使用 [MIT License](LICENSE)。发布边界见 [公开范围](PUBLIC_RELEASE_SCOPE.md)，依赖、可选网关、模型与外部运行时见 [第三方许可说明](THIRD_PARTY_NOTICES.md)。

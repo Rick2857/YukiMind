@@ -1,0 +1,199 @@
+name: Quality
+
+on:
+  workflow_call:
+    inputs:
+      force_docker:
+        description: Run Docker checks even when the change is documentation-only
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect runtime changes
+        id: filter
+        shell: bash
+        env:
+          FORCE_DOCKER: ${{ inputs.force_docker || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$FORCE_DOCKER" == "true" ]]; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base="$BASE_SHA"
+          else
+            base="$BEFORE_SHA"
+          fi
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          docker=false
+          while IFS= read -r path; do
+            case "$path" in
+              README.md|CHANGELOG.md|docs/*|img/*|*.md) ;;
+              *) docker=true; break ;;
+            esac
+          done < <(git diff --name-only "$base" "$HEAD_SHA")
+          echo "docker=$docker" >> "$GITHUB_OUTPUT"
+
+  memory-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.31"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+      - name: Validate versioned synthetic dataset
+        run: uv run qq-ai-bot-cli memory quality validate-dataset
+      - name: Run deterministic Memory V2 benchmark
+        run: uv run qq-ai-bot-cli memory quality run --suite full
+      - name: Compare frozen baseline
+        run: uv run qq-ai-bot-cli memory quality compare
+      - name: Upload content-free quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-v2-quality-report
+          path: |
+            artifacts/memory-quality/report.json
+            artifacts/memory-quality/report.md
+            artifacts/memory-quality/junit.xml
+          if-no-files-found: warn
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.31"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Mypy
+        run: uv run mypy src
+      - name: Enforce test budget and required safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(uv run pytest --collect-only -q)"
+          printf '%s\n' "$output"
+          count="$(printf '%s\n' "$output" | sed -nE 's/^([0-9]+) tests? collected.*$/\1/p' | tail -n 1)"
+          test -n "$count"
+          # Includes runtime recovery, whole-delivery and real three-segment protocol gates.
+          if (( count > 885 )); then
+            echo "test budget exceeded: $count collected (maximum 885)" >&2
+            exit 1
+          fi
+          required_tests=(
+            "tests/unit/test_event_prompt_mentions.py::test_history_reprojects_ordered_mentions_from_persisted_segments"
+            "tests/unit/test_event_prompt_mentions.py::test_history_segment_fallback_log_never_contains_content_or_ids"
+          )
+          for required_test in "${required_tests[@]}"; do
+            if ! grep -Fqx "$required_test" <<<"$output"; then
+              echo "required safety gate is missing: $required_test" >&2
+              exit 1
+            fi
+          done
+      - name: Installer syntax
+        shell: bash
+        run: |
+          bash -n install.sh
+          pwsh -NoProfile -Command '
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path "install.ps1"),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+          '
+      - name: Pytest
+        run: uv run pytest -q
+      - name: Example plugin contract
+        run: uv run pytest -q examples/plugins/com.example.echo/tests
+      - name: GitHub Monitor plugin contract and behavior
+        run: |
+          uv run pytest -q plugins/github-monitor/tests
+          uv run qq-ai-bot-cli plugin test plugins/github-monitor
+      - name: Alembic fresh install
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./data/ci.db
+        run: |
+          mkdir -p data
+          uv run alembic upgrade head
+      - name: Canonical migration matrix
+        run: uv run pytest -q tests/unit/test_migration_0049.py
+
+  docker:
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve project version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -n 1)"
+          test -n "$version"
+          echo "YUKI_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Validate Compose
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+      - name: Build runtime image
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml build bot
+      - name: Build network-isolated speech worker image
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile speech build genie-tts-worker
+
+  speech-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/genie_tts_worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.31"
+          enable-cache: true
+      - name: Install worker test dependencies
+        run: uv sync --frozen --extra dev
+      - name: Ruff
+        run: uv run ruff check src tests
+      - name: Mypy
+        run: uv run mypy src
+      - name: Fake Genie and Unix socket tests
+        run: uv run pytest -q

@@ -1,0 +1,628 @@
+"""Settings tests for external system prompt files."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import get_args
+
+import httpx
+import pytest
+from pydantic import ValidationError
+
+from qq_ai_bot.config import Settings
+from qq_ai_bot.domain.messages import ReasoningEffort
+from qq_ai_bot.model_runtime.models import ModelProfile
+from qq_ai_bot.prompting.models import PromptChannel, PromptContribution, PromptTrust
+from qq_ai_bot.vision.models import (
+    PreparedFrame,
+    PreparedVisualInput,
+    VisionAnalysisMode,
+    VisionAnalysisOptions,
+)
+from qq_ai_bot.vision.qwen import QwenVisionProvider
+
+
+@pytest.mark.parametrize("effort", list(ReasoningEffort))
+def test_deepseek_reasoning_effort_accepts_supported_values(effort: ReasoningEffort) -> None:
+    settings = Settings(_env_file=None, llm_reasoning_effort=effort.value)
+
+    expected = (
+        ReasoningEffort.LOW if effort in {ReasoningEffort.NONE, ReasoningEffort.MINIMAL} else effort
+    )
+    assert settings.llm_reasoning_effort is expected
+    assert settings.model_runtime.llm_reasoning_effort is expected
+    disabled = Settings(_env_file=None, llm_thinking_enabled=False, vision_thinking_enabled=False)
+    assert disabled.llm_thinking_enabled is True
+    assert disabled.vision_thinking_enabled is True
+    # Capability declarations must be explicit, not silently invented by the floor.
+    with pytest.raises(ValidationError, match="require the reasoning capability"):
+        ModelProfile(
+            id="unsupported",
+            provider="fake",
+            model="fake",
+            timeout_seconds=1,
+            max_retries=0,
+            default_temperature=0,
+            default_max_output_tokens=100,
+        )
+
+
+def test_removed_history_configuration_is_explicitly_rejected() -> None:
+    for removed_key in (
+        "_".join(("conversation", "history", "rollup", "max", "attempts")),
+        "_".join(("conversation", "history", "rollup", "l0", "min", "events")),
+        "_".join(("conversation", "history", "rollup", "fan", "in")),
+        "_".join(("conversation", "history", "rollup", "max", "level")),
+    ):
+        with pytest.raises(ValidationError, match=r"removed 3\.6 conversation history"):
+            Settings.model_validate({removed_key: 3})
+
+
+def test_memory_dream_absolute_output_budget_cannot_exceed_contract() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, memory_dream_episode_max_characters=801)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.memory_dream_episode_compression_ratio == 0.45
+    assert settings.memory_dream_max_output_tokens == 4096
+    assert settings.memory_dream_episode_max_characters == 800
+
+
+def test_system_prompt_file_overrides_inline_prompt(tmp_path: Path) -> None:
+    prompt_file = tmp_path / "system_prompt.md"
+    prompt_file.write_text("# Role\n\nExternal prompt\n", encoding="utf-8")
+
+    settings = Settings.model_validate(
+        {
+            "system_prompt": "inline prompt",
+            "system_prompt_file": prompt_file,
+        }
+    )
+
+    assert settings.system_prompt == "# Role\n\nExternal prompt"
+
+
+def test_system_prompt_file_must_exist_and_not_be_empty(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="cannot read SYSTEM_PROMPT_FILE"):
+        Settings.model_validate(
+            {
+                "system_prompt_file": tmp_path / "missing.md",
+            }
+        )
+    prompt_file = tmp_path / "empty.md"
+    prompt_file.write_text(" \n", encoding="utf-8")
+
+    with pytest.raises(ValidationError, match="SYSTEM_PROMPT_FILE must not be empty"):
+        Settings.model_validate({"system_prompt_file": prompt_file})
+
+    prompt_file = tmp_path / "oversized.md"
+    prompt_file.write_text("x" * 8_193, encoding="utf-8")
+
+    with pytest.raises(ValidationError, match="8192 characters"):
+        Settings.model_validate({"system_prompt_file": prompt_file})
+
+    for body in (
+        {"content": "x" * 8_193},
+        {"payload": {"value": "x" * 8_193}},
+    ):
+        with pytest.raises(ValidationError, match="8192 characters"):
+            PromptContribution(
+                id="oversized",
+                channel=PromptChannel.CONTEXT,
+                trust=PromptTrust.UNTRUSTED,
+                **body,
+            )
+
+
+def test_yuki_persona_file_is_required_and_expands_fixed_placeholder(
+    tmp_path: Path,
+) -> None:
+    persona_file = tmp_path / "persona.md"
+    persona_file.write_text("Yuki 的共享人格", encoding="utf-8")
+    prompt_file = tmp_path / "prompt.md"
+    prompt_file.write_text(
+        "before\n{{YUKI_PERSONA_CORE}}\nafter",
+        encoding="utf-8",
+    )
+
+    settings = Settings.model_validate(
+        {
+            "BOT_PERSONA_FILE": None,
+            "yuki_persona_file": persona_file,
+            "system_prompt_file": prompt_file,
+        }
+    )
+
+    assert settings.yuki_persona == "Yuki 的共享人格"
+    assert settings.system_prompt == "before\nYuki 的共享人格\nafter"
+
+
+def test_yuki_persona_file_must_exist_and_not_be_empty(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="cannot read YUKI_PERSONA_FILE"):
+        Settings.model_validate(
+            {
+                "BOT_PERSONA_FILE": None,
+                "yuki_persona_file": tmp_path / "missing.md",
+            }
+        )
+
+    empty = tmp_path / "empty-persona.md"
+    empty.write_text("\n", encoding="utf-8")
+    with pytest.raises(ValidationError, match="YUKI_PERSONA_FILE must not be empty"):
+        Settings.model_validate(
+            {
+                "BOT_PERSONA_FILE": None,
+                "yuki_persona_file": empty,
+            }
+        )
+
+
+def test_persona_aliases_do_not_modify_prompt_without_placeholder(tmp_path: Path) -> None:
+    persona_file = tmp_path / "persona.md"
+    persona_file.write_text("shared persona", encoding="utf-8")
+    prompt_file = tmp_path / "legacy.md"
+    prompt_file.write_text("legacy prompt already contains its persona", encoding="utf-8")
+
+    settings = Settings.model_validate(
+        {
+            "yuki_persona_file": persona_file,
+            "system_prompt_file": prompt_file,
+        }
+    )
+
+    assert settings.system_prompt == "legacy prompt already contains its persona"
+
+    persona_file.write_text("Mika 的独立共享人格", encoding="utf-8")
+    original_prompt = "# 私有系统提示词\n\n这里不包含任何人格占位符。"
+    prompt_file.write_text(original_prompt, encoding="utf-8")
+    settings = Settings.model_validate(
+        {"BOT_PERSONA_FILE": persona_file, "system_prompt_file": prompt_file}
+    )
+    assert settings.bot_persona == "Mika 的独立共享人格"
+    assert settings.system_prompt == original_prompt
+
+
+def test_bot_identity_is_configurable_and_aliases_are_stably_deduplicated() -> None:
+    settings = Settings.model_validate(
+        {
+            "BOT_DISPLAY_NAME": "Mika",
+            "BOT_ALIASES": "Mika,mika,米卡, MIKA ",
+            "BOT_VOICE_NAME": "みか",
+        }
+    )
+
+    assert settings.bot_display_name == "Mika"
+    assert settings.bot_aliases == ("Mika", "米卡")
+    assert settings.bot_voice_name == "みか"
+    assert settings.bot_identity.display_name == "Mika"
+
+
+def test_example_system_prompt_is_complete_and_preserves_mode_boundaries() -> None:
+    prompt_path = Path(__file__).parents[2] / "config" / "system_prompt.example.md"
+    prompt = prompt_path.read_text(encoding="utf-8")
+    assert "{{YUKI_PERSONA_CORE}}" not in prompt
+
+    required_fragments = (
+        "18 岁成年女性",
+        "银白色长发",
+        "蓝色兔耳形发带",
+        "雪花发饰",
+        "每句话不得超过 10 个汉字",
+        "一条消息只能发送一句话或一个短语",
+        "只有用户明确进入角色场景、约会场景、成人场景或要求动作描写时",
+        "Yuki 始终都是 Yuki",
+        "正经工作模式不受每句 10 字和每条一句的限制",
+        "优先保证事实准确、内容完整、步骤可执行和结果可验证",
+        "任务完成或话题回到闲聊后，立即恢复日常对话格式",
+    )
+    assert all(fragment in prompt for fragment in required_fragments)
+
+
+def test_rollup_event_and_batch_watermarks_are_consistent() -> None:
+    with pytest.raises(ValidationError, match="must not exceed LOCAL_CONTEXT_EVENT_LIMIT"):
+        Settings(
+            _env_file=None,
+            local_context_event_limit=1024,
+            conversation_rollup_raw_tail_events=768,
+            conversation_rollup_trigger_events=512,
+        )
+    with pytest.raises(ValidationError, match="must cover one CONVERSATION_ROLLUP_TRIGGER_EVENTS"):
+        Settings(
+            _env_file=None,
+            conversation_rollup_trigger_events=1024,
+            conversation_rollup_batch_max_events=256,
+            conversation_rollup_foreground_max_batches=3,
+            conversation_rollup_worker_max_batches_per_claim=5,
+        )
+
+
+def test_daily_chat_delay_range_must_be_ordered() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="daily chat minimum delay must not exceed",
+    ):
+        Settings.model_validate(
+            {
+                "daily_chat_message_delay_min_seconds": 3,
+                "daily_chat_message_delay_max_seconds": 1,
+            }
+        )
+
+
+def test_memory_embedding_disabled_needs_no_secret_but_enabled_does() -> None:
+    disabled = Settings.model_validate(
+        {
+            "memory_embedding_enabled": False,
+            "memory_embedding_base_url": "",
+            "memory_embedding_api_key": "",
+        }
+    )
+    assert disabled.memory_embedding_configured is False
+
+    with pytest.raises(ValidationError, match="MEMORY_EMBEDDING_BASE_URL"):
+        Settings.model_validate(
+            {
+                "memory_embedding_enabled": True,
+                "memory_embedding_base_url": "",
+                "memory_embedding_api_key": "",
+            }
+        )
+
+    enabled = Settings.model_validate(
+        {
+            "memory_embedding_enabled": True,
+            "memory_embedding_base_url": "https://workspace.example/api/v1",
+            "memory_embedding_api_key": "test-only-key",
+        }
+    )
+    assert enabled.memory_embedding_configured is True
+    assert "test-only-key" not in repr(enabled)
+
+
+def test_memory_embedding_rejects_unsupported_profiles() -> None:
+    invalid_profiles = (
+        ({"memory_embedding_provider": "other"}, "must be qwen_dashscope"),
+        ({"memory_embedding_dimensions": 768}, "supports 1024 dimensions"),
+        ({"memory_embedding_output_type": "sparse"}, "must be dense"),
+        ({"memory_embedding_document_template_version": 2}, "unsupported"),
+    )
+    for override, error in invalid_profiles:
+        with pytest.raises(ValidationError, match=error):
+            Settings.model_validate(override)
+
+
+def test_planner_and_plugin_defaults_are_domain_validated_without_arbitrary_caps() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.daily_chat_message_delay_min_seconds == 1
+    assert settings.daily_chat_message_delay_max_seconds == 2
+    assert settings.conversation_autonomous_debounce_seconds == 3
+    assert settings.conversation_autonomous_admission_threshold == 80
+    assert settings.conversation_autonomous_batch_limit == 8
+    assert settings.reply_hard_max_messages == 10
+    assert settings.max_context_characters == 131_072
+    assert settings.local_context_event_limit == 2_048
+    assert settings.history_window_low_watermark_ratio == 0.67
+    assert settings.context_metadata_budget_ratio == 0.04
+    assert settings.memory_context_limit_per_entity == 4
+    assert settings.memory_automatic_recall_continuation_limit == 4
+    assert settings.conversation_rollup_raw_tail_events == 128
+    assert settings.conversation_rollup_raw_tail_characters == 20_480
+    assert settings.conversation_rollup_trigger_events == 384
+    assert settings.conversation_rollup_trigger_characters == 81_920
+    assert settings.conversation_rollup_stop_events == 0
+    assert settings.conversation_rollup_stop_characters == 0
+    assert settings.conversation_rollup_batch_max_events == 256
+    assert settings.conversation_rollup_batch_max_characters == 32_768
+    assert settings.conversation_rollup_worker_max_batches_per_claim == 5
+    assert settings.conversation_rollup_foreground_max_batches == 5
+    assert settings.conversation_rollup_summary_max_characters == 2400
+    assert settings.conversation_rollup_retry_max_seconds == 960
+    assert settings.conversation_rollup_lease_heartbeat_seconds == 60
+    assert settings.tooling_selected_tool_limit == 32
+    assert settings.tooling_first_round_hard_cap == 16
+    assert settings.tooling_first_round_pin_ids == (
+        "memory_change",
+        "get_person_memories",
+        "get_group_memories",
+        "search_chat_history",
+        "get_relationship",
+        "get_self_memories",
+        "web_search",
+        "automation_create",
+        "send_emoji",
+    )
+    assert settings.tooling_schema_token_budget == 12000
+    assert settings.mcp_selected_tool_limit == 16
+    assert settings.mcp_schema_token_budget == 8000
+    assert settings.agent_max_tool_calls == 32
+    assert settings.agent_max_model_requests == 24
+    assert settings.agent_tool_result_max_characters == 8000
+    assert settings.memory_self_reflection_event_threshold == 50
+    assert settings.memory_self_reflection_character_threshold == 8000
+    assert settings.memory_self_reflection_low_event_threshold == 30
+    assert settings.memory_self_reflection_low_character_threshold == 4800
+    assert settings.memory_self_reflection_natural_gap_seconds == 300
+    assert settings.memory_self_reflection_max_batches_per_run == 12
+    assert settings.memory_self_reflection_max_batches_per_conversation_per_run == 7
+    assert settings.memory_self_reflection_max_daily_calls == 36
+    assert settings.memory_self_reflection_max_events == 100
+    assert settings.emoji_selector_candidate_count == 3
+    assert settings.emoji_selector_score_gap == 0.75
+    assert settings.emoji_selector_timeout_seconds == 2
+    assert not settings.plugin_system_enabled
+    assert settings.plugin_api_version == "2.0"
+    assert settings.plugin_ai_session_max_history_messages == 200
+    assert settings.plugin_external_event_context_limit == 10
+    assert settings.plugin_external_event_context_characters == 6000
+    assert settings.plugin_external_event_summary_characters == 800
+    assert settings.plugins.plugin_external_event_summary_characters == 800
+
+    assert Settings.model_validate({"conversation_autonomous_admission_threshold": 101})
+    with pytest.raises(ValidationError, match="greater than or equal to 0"):
+        Settings.model_validate({"conversation_autonomous_admission_threshold": -1})
+    assert Settings.model_validate({"conversation_autonomous_debounce_seconds": 0})
+    assert Settings.model_validate({"conversation_autonomous_debounce_seconds": 61})
+    assert Settings.model_validate({"reply_hard_max_messages": 21})
+    with pytest.raises(ValidationError, match="PLUGIN_API_VERSION"):
+        Settings.model_validate({"plugin_api_version": "v1"})
+    with pytest.raises(ValidationError, match="total plugin prompt budget"):
+        Settings.model_validate(
+            {
+                "plugin_max_prompt_fragment_characters": 2000,
+                "plugin_max_total_prompt_characters": 2000,
+            }
+        )
+
+
+def test_plugin_external_event_summary_characters_default_and_override() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.plugin_external_event_summary_characters == 800
+    overridden = Settings.model_validate({"plugin_external_event_summary_characters": 120})
+    assert overridden.plugin_external_event_summary_characters == 120
+    assert overridden.plugins.plugin_external_event_summary_characters == 120
+    with pytest.raises(ValidationError, match="greater than 0"):
+        Settings.model_validate({"plugin_external_event_summary_characters": 0})
+    with pytest.raises(ValidationError, match="less than or equal to 8000"):
+        Settings.model_validate({"plugin_external_event_summary_characters": 8_001})
+
+
+def test_memory_limits_are_configurable_positive_values() -> None:
+    assert Settings.model_validate({"group_memory_max_entries": 100})
+    assert Settings.model_validate({"person_group_memory_max_entries": 500})
+    with pytest.raises(ValidationError, match="greater than 0"):
+        Settings.model_validate({"person_group_memory_max_entries": 0})
+
+
+def test_legacy_self_reflection_session_limit_env_alias_is_supported() -> None:
+    settings = Settings(
+        _env_file=None,
+        MEMORY_SELF_REFLECTION_MAX_SESSIONS_PER_RUN=5,
+        memory_self_reflection_max_batches_per_conversation_per_run=4,
+    )
+
+    assert settings.memory_self_reflection_max_batches_per_run == 5
+
+
+def test_self_reflection_watermarks_must_be_ordered() -> None:
+    for override, error in [
+        (
+            {
+                "memory_self_reflection_low_event_threshold": 31,
+                "memory_self_reflection_event_threshold": 30,
+            },
+            "low event watermark cannot exceed high watermark",
+        ),
+        (
+            {"memory_self_reflection_event_threshold": 51, "memory_self_reflection_max_events": 50},
+            "high event watermark cannot exceed batch event limit",
+        ),
+        (
+            {
+                "memory_self_reflection_low_character_threshold": 6001,
+                "memory_self_reflection_character_threshold": 6000,
+            },
+            "low character watermark cannot exceed high watermark",
+        ),
+        (
+            {
+                "memory_self_reflection_character_threshold": 8001,
+                "memory_self_reflection_max_characters": 8000,
+            },
+            "high character watermark cannot exceed batch character limit",
+        ),
+    ]:
+        _check_self_reflection_watermarks_must_be_ordered(override, error)
+
+
+def _check_self_reflection_watermarks_must_be_ordered(
+    override: dict[str, object], error: str
+) -> None:
+    with pytest.raises(ValidationError, match=error):
+        Settings.model_validate(override)
+
+
+def test_web_enabled_requires_tavily_key_and_hides_it_from_repr() -> None:
+    with pytest.raises(ValidationError, match="TAVILY_API_KEY"):
+        Settings.model_validate({"web_enabled": True, "tavily_api_key": ""})
+
+    settings = Settings.model_validate(
+        {
+            "web_enabled": True,
+            "tavily_api_key": "tvly-sensitive-test-value",
+        }
+    )
+    assert settings.web_configured
+    assert "tvly-sensitive-test-value" not in repr(settings)
+    migrated = Settings.model_validate(
+        {
+            "web_mode": "native_with_tavily_fallback",
+            "tavily_api_key": "test-placeholder",
+        }
+    )
+    assert migrated.web.mode.value == "both"
+    assert Settings.model_validate({"web_mode": "disabled"}).web.mode.value == "disabled"
+
+
+def test_web_limits_are_configurable_and_search_depth_is_validated() -> None:
+    assert Settings.model_validate({"web_extract_max_results": 4})
+    assert Settings.model_validate({"web_max_calls_per_turn": 4})
+    with pytest.raises(ValidationError, match="WEB_SEARCH_DEPTH"):
+        Settings.model_validate({"web_search_depth": "unbounded"})
+
+
+def test_relationship_defaults_have_no_daily_caps_and_keep_single_turn_bounds() -> None:
+    settings = Settings()
+    assert settings.relationship_initial_affection == 50
+    assert settings.relationship_initial_trust == 50
+    assert settings.affection_max_auto_delta == 2
+    assert settings.trust_max_auto_delta == 2
+    assert not hasattr(settings, "affection_daily_positive_cap")
+    assert not hasattr(settings, "affection_daily_negative_cap")
+    assert not hasattr(settings, "trust_daily_positive_cap")
+    assert not hasattr(settings, "trust_daily_negative_cap")
+
+    assert Settings.model_validate({"affection_max_auto_delta": 3})
+    assert Settings.model_validate({"relationship_batch_max_turns": 11})
+    with pytest.raises(ValidationError, match="less than or equal to 1"):
+        Settings.model_validate({"relationship_confidence_threshold": 1.1})
+
+
+@pytest.mark.asyncio
+async def test_vision_defaults_are_safe_and_api_key_is_hidden() -> None:
+    settings = Settings(
+        _env_file=None,
+        vision_enabled=False,
+        vision_api_key="vision-sensitive-test-value",
+    )
+
+    assert not settings.vision_enabled
+    assert not settings.vision_configured
+    assert settings.vision_provider == "qwen"
+    assert settings.vision_model == "qwen3.7-plus"
+    assert settings.vision_timeout_seconds == 120
+    assert settings.vision_global_concurrency == 4
+    assert settings.vision_queue_max_pending == 32
+    assert settings.vision_queue_timeout_seconds == 120
+    assert settings.vision_media_download_timeout_seconds == 120
+    assert settings.vision_max_output_tokens == 8192
+    assert settings.vision_thinking_enabled
+    assert settings.vision_thinking_budget == 6144
+    assert settings.vision_low_confidence_retry_threshold == 0.65
+    assert settings.vision_max_images_per_turn == 5
+    assert settings.vision_max_frames_per_turn == 16
+    assert settings.vision_gif_max_frames == 8
+    assert settings.vision_max_download_bytes == 20_971_520
+    assert settings.vision_video_max_download_bytes == 209_715_200
+    assert settings.vision_max_prepared_bytes == 16_777_216
+    assert settings.vision_max_dimension == 4096
+    assert settings.vision_max_pixels == 16_777_216
+    assert settings.vision_per_user_requests_per_minute == 20
+    assert settings.vision_per_group_requests_per_minute == 60
+    assert "vision-sensitive-test-value" not in repr(settings)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        calls.append(payload)
+        assert payload["enable_thinking"] is True
+        assert payload["thinking_budget"] == 6144
+        assert "reasoning_effort" not in payload  # No invented cross-provider mapping.
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps({"items": [{"index": 1, "description": "test"}]})
+                        }
+                    }
+                ]
+            },
+        )
+
+    frame = PreparedFrame(
+        content_hash="test",
+        mime_type="image/png",
+        width=1,
+        height=1,
+        frame_index=0,
+        frame_count=1,
+        data_url="data:image/png;base64,AA==",
+    )
+    visual = PreparedVisualInput(
+        media_hash="test", frames=(frame,), animated=False, source="current"
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = QwenVisionProvider(
+            base_url="https://vision.example/v1",
+            api_key="test",
+            model="test",
+            timeout_seconds=1,
+            max_retries=0,
+            max_output_tokens=8192,
+            global_concurrency=1,
+            client=client,
+        )
+        for mode in get_args(VisionAnalysisMode):
+            options = VisionAnalysisOptions(analysis_mode=mode, thinking_enabled=False)
+            assert options.thinking_enabled is True
+            result = await provider.analyze((visual,), "test", options=options)
+            assert result.items[0].description == "test"
+    assert len(calls) == len(get_args(VisionAnalysisMode))  # No non-thinking first pass/review.
+
+
+def test_vision_enabled_requires_complete_provider_configuration() -> None:
+    with pytest.raises(ValidationError, match=r"VISION_BASE_URL.*VISION_API_KEY"):
+        Settings.model_validate(
+            {
+                "vision_enabled": True,
+                "vision_base_url": "",
+                "vision_api_key": "",
+                "vision_model": "qwen3.7-plus",
+            }
+        )
+
+    settings = Settings.model_validate(
+        {
+            "vision_enabled": True,
+            "vision_base_url": "https://dashscope.example/v1",
+            "vision_api_key": "secret",
+            "vision_model": "qwen3.7-plus",
+        }
+    )
+    assert settings.vision_configured
+
+
+def test_vision_numeric_domain_constraints_are_validated() -> None:
+    for field, value in [
+        ("vision_max_prepared_bytes", 0),
+        ("vision_timeout_seconds", 0),
+        ("vision_queue_max_pending", 0),
+        ("vision_queue_timeout_seconds", 0),
+        ("vision_media_download_timeout_seconds", 0),
+        ("vision_max_retries", 0),
+        ("vision_low_confidence_retry_threshold", 1.1),
+    ]:
+        _check_vision_numeric_domain_constraints_are_validated(field, value)
+
+
+def _check_vision_numeric_domain_constraints_are_validated(field: str, value: int | float) -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate({field: value})
+
+
+def test_vision_operational_limits_have_no_hidden_upper_clamp() -> None:
+    settings = Settings.model_validate(
+        {
+            "vision_max_images_per_turn": 25,
+            "vision_gif_max_frames": 40,
+            "vision_max_frames_per_turn": 50,
+            "vision_max_download_bytes": 128 * 1024 * 1024,
+            "vision_max_retries": 4,
+            "vision_thinking_budget": 65536,
+        }
+    )
+    assert settings.vision_max_images_per_turn == 25
+    assert settings.vision_thinking_budget == 65536

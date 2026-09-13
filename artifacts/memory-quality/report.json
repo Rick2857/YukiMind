@@ -1,0 +1,1345 @@
+{
+  "schema_version": "1",
+  "suite_version": "memory-v2-quality-v2",
+  "suite_mode": "full",
+  "commit": "2d5f02798ed86dc60b3e5280ced9070a1fd53fd6",
+  "python_version": "3.12.13",
+  "sqlite_version": "3.53.1",
+  "dataset_hash": "5dfc20b7c1de038d985ce14d773ca0d73c1c731134366b039db55e5d89af71d4",
+  "gate_config_hash": "549413f51dda20a7084bf76e80aa2416df88f4bf87f2e1fbce8d3142af9d70dd",
+  "fake_model_id": "memory-quality-fake-model-v1",
+  "fake_embedding_id": "fake-embedding/local-test/v1",
+  "deterministic": true,
+  "model_provider_id": null,
+  "embedding_provider_id": null,
+  "started_at": "2026-09-10T08:53:35.478722Z",
+  "duration_seconds": 4.561933699995279,
+  "case_count": 19,
+  "passed_count": 19,
+  "failed_count": 0,
+  "cases": [
+    {
+      "case_id": "identity_same_fact",
+      "category": "identity",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "identity_same_fact",
+        "claims": [
+          "event_person_a|person|person_a|hobby:functional-analysis|喜欢泛函分析",
+          "event_person_b|person|person_b|hobby:functional-analysis|喜欢泛函分析"
+        ],
+        "facts": [
+          "fact_person_a|person|person_a|-|fact|hobby:functional-analysis|喜欢泛函分析|active|clear|self_report",
+          "fact_person_b|person|person_b|-|fact|hobby:functional-analysis|喜欢泛函分析|active|clear|self_report"
+        ],
+        "evidence": [
+          "fact_person_a|event_person_a|person_a|self_statement|我喜欢泛函分析",
+          "fact_person_b|event_person_b|person_b|self_statement|我喜欢泛函分析"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_person_a|fact_person_a",
+          "query_person_b|fact_person_b"
+        ],
+        "context": [
+          "query_person_a|fact_person_a",
+          "query_person_b|fact_person_b"
+        ],
+        "rebuild": null,
+        "extraction_requests": 2,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 576,
+        "extraction_latency_ms": 162.04329999163747,
+        "retrieval_latency_ms": [
+          20.43889998458326,
+          12.2811000328511
+        ],
+        "context_latency_ms": [
+          0.03829994238913059,
+          0.03920006565749645
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "group_isolation",
+      "category": "identity",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "group_isolation",
+        "claims": [
+          "event_group_a|group|group_a|activity:friday|周五看电影",
+          "event_group_b|group|group_b|activity:friday|周五看电影"
+        ],
+        "facts": [
+          "fact_group_a|group|-|group_a|fact|activity:friday|周五看电影|active|clear|group_report",
+          "fact_group_b|group|-|group_b|fact|activity:friday|周五看电影|active|clear|group_report"
+        ],
+        "evidence": [
+          "fact_group_a|event_group_a|person_a|group_statement|本群周五看电影",
+          "fact_group_b|event_group_b|person_a|group_statement|本群周五看电影"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_group_a|fact_group_a",
+          "query_group_b|fact_group_b"
+        ],
+        "context": [
+          "query_group_a|fact_group_a",
+          "query_group_b|fact_group_b"
+        ],
+        "rebuild": null,
+        "extraction_requests": 2,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 582,
+        "extraction_latency_ms": 109.79010001756251,
+        "retrieval_latency_ms": [
+          11.860499856993556,
+          8.124100044369698
+        ],
+        "context_latency_ms": [
+          0.04110019654035568,
+          0.04469999112188816
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "third_party_mention",
+      "category": "third_party",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "third_party_mention",
+        "claims": [
+          "event_report|person_group|person_b|hobby:photography|喜欢摄影"
+        ],
+        "facts": [
+          "fact_reported|person_group|person_b|group_a|fact|hobby:photography|喜欢摄影|active|clear|third_party"
+        ],
+        "evidence": [
+          "fact_reported|event_report|person_a|third_party_statement|你喜欢摄影"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_group_profile|fact_reported"
+        ],
+        "context": [
+          "query_group_profile|fact_reported"
+        ],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 301,
+        "extraction_latency_ms": 71.51050004176795,
+        "retrieval_latency_ms": [
+          14.195300173014402,
+          9.906100109219551
+        ],
+        "context_latency_ms": [
+          0.03809994086623192,
+          0.010699965059757233
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "unknown_subject",
+      "category": "identity",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "unknown_subject",
+        "claims": [],
+        "facts": [],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 0,
+        "extraction_latency_ms": 16.49739989079535,
+        "retrieval_latency_ms": [],
+        "context_latency_ms": [],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "evidence_mismatch",
+      "category": "extraction",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "evidence_mismatch",
+        "claims": [],
+        "facts": [],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 0,
+        "extraction_latency_ms": 18.455399898812175,
+        "retrieval_latency_ms": [],
+        "context_latency_ms": [],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "bot_outbound_blank",
+      "category": "privacy",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "bot_outbound_blank",
+        "claims": [],
+        "facts": [],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 0,
+        "extraction_latency_ms": 5.06999995559454,
+        "retrieval_latency_ms": [],
+        "context_latency_ms": [],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "interaction_preference",
+      "category": "extraction",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "interaction_preference",
+        "claims": [
+          "event_preference|person|person_a|reply:brevity|回复时简短一点"
+        ],
+        "facts": [
+          "fact_preference|person|person_a|-|preference|reply:brevity|回复时简短一点|active|clear|self_report"
+        ],
+        "evidence": [
+          "fact_preference|event_preference|person_a|self_statement|以后回复我时请简短一点"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_preference|fact_preference"
+        ],
+        "context": [
+          "query_preference|fact_preference"
+        ],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 301,
+        "extraction_latency_ms": 63.03830002434552,
+        "retrieval_latency_ms": [
+          18.937000073492527
+        ],
+        "context_latency_ms": [
+          0.034899916499853134
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "explicit_memory",
+      "category": "extraction",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "explicit_memory",
+        "claims": [
+          "event_explicit|person|person_a|favorite:color|最喜欢蓝色"
+        ],
+        "facts": [
+          "fact_color|person|person_a|-|fact|favorite:color|最喜欢蓝色|active|clear|self_report"
+        ],
+        "evidence": [
+          "fact_color|event_explicit|person_a|self_statement|请记住我最喜欢蓝色"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_color|fact_color"
+        ],
+        "context": [
+          "query_color|fact_color"
+        ],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 292,
+        "extraction_latency_ms": 150.82750003784895,
+        "retrieval_latency_ms": [
+          20.209699869155884
+        ],
+        "context_latency_ms": [
+          0.043800100684165955
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "idempotent_evidence",
+      "category": "idempotency",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "idempotent_evidence",
+        "claims": [
+          "event_repeat_1|person|person_a|drink:coffee|喜欢黑咖啡",
+          "event_repeat_2|person|person_a|drink:coffee|喜欢黑咖啡"
+        ],
+        "facts": [
+          "fact_coffee|person|person_a|-|fact|drink:coffee|喜欢黑咖啡|active|clear|self_report"
+        ],
+        "evidence": [
+          "fact_coffee|event_repeat_1|person_a|self_statement|我喜欢黑咖啡",
+          "fact_coffee|event_repeat_2|person_a|self_statement|我喜欢黑咖啡"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_coffee|fact_coffee"
+        ],
+        "context": [
+          "query_coffee|fact_coffee"
+        ],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 289,
+        "extraction_latency_ms": 100.81540001556277,
+        "retrieval_latency_ms": [
+          17.962199868634343
+        ],
+        "context_latency_ms": [
+          0.034899916499853134
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "correction_chain",
+      "category": "correction",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "correction_chain",
+        "claims": [
+          "event_new_city|person|person_a|location:home|现在住上海",
+          "event_old_city|person|person_a|location:home|住福州"
+        ],
+        "facts": [
+          "fact_city_new|person|person_a|-|fact|location:home|现在住上海|active|clear|self_report",
+          "fact_city_old|person|person_a|-|fact|location:home|住福州|superseded|clear|self_report"
+        ],
+        "evidence": [
+          "fact_city_new|event_new_city|person_a|correction|不是，我现在住上海",
+          "fact_city_old|event_old_city|person_a|self_statement|我住福州"
+        ],
+        "relations": [],
+        "retrieval": [
+          "query_shanghai|fact_city_new"
+        ],
+        "context": [
+          "query_shanghai|fact_city_new"
+        ],
+        "rebuild": null,
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 291,
+        "extraction_latency_ms": 106.91260010935366,
+        "retrieval_latency_ms": [
+          17.571100033819675,
+          6.741899996995926
+        ],
+        "context_latency_ms": [
+          0.035899924114346504,
+          0.01119985245168209
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "contested_excluded",
+      "category": "conflict",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "contested_excluded",
+        "claims": [],
+        "facts": [
+          "fact_reported|person|person_a|-|fact|work:role:reported|担任设计师|contested|contested|third_party",
+          "fact_self|person|person_a|-|fact|work:role:self|不担任设计师|contested|contested|self_report"
+        ],
+        "evidence": [],
+        "relations": [
+          "fact_self|fact_reported|contradicts"
+        ],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 2,
+        "extraction_latency_ms": 4.12449985742569,
+        "retrieval_latency_ms": [
+          9.711700025945902
+        ],
+        "context_latency_ms": [
+          0.010500196367502213
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "expired_excluded",
+      "category": "temporal",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "expired_excluded",
+        "claims": [],
+        "facts": [
+          "fact_expired|person|person_a|-|fact|temporary:trip|本周在北京|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 2,
+        "extraction_latency_ms": 3.839300014078617,
+        "retrieval_latency_ms": [
+          11.795700062066317
+        ],
+        "context_latency_ms": [
+          0.011299969628453255
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "lexical_retrieval",
+      "category": "retrieval",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "lexical_retrieval",
+        "claims": [],
+        "facts": [
+          "fact_math|person|person_a|-|fact|hobby:math|喜欢抽象代数|active|clear|self_report",
+          "fact_music|person|person_a|-|fact|hobby:music|喜欢爵士钢琴|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [
+          "query_music|fact_music"
+        ],
+        "context": [
+          "query_music|fact_music"
+        ],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 287,
+        "extraction_latency_ms": 3.6126000341027975,
+        "retrieval_latency_ms": [
+          20.40329994633794
+        ],
+        "context_latency_ms": [
+          0.03539980389177799
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "short_query",
+      "category": "retrieval",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "short_query",
+        "claims": [],
+        "facts": [
+          "fact_tea|person|person_a|-|fact|drink:tea|爱茶|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [
+          "query_tea|fact_tea"
+        ],
+        "context": [
+          "query_tea|fact_tea"
+        ],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 283,
+        "extraction_latency_ms": 3.82229988463223,
+        "retrieval_latency_ms": [
+          17.959999851882458
+        ],
+        "context_latency_ms": [
+          0.036300159990787506
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "semantic_retrieval",
+      "category": "retrieval",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "semantic_retrieval",
+        "claims": [],
+        "facts": [
+          "fact_algorithm_art|person|person_a|-|fact|hobby:generative-art|偏爱算法艺术|active|clear|self_report",
+          "fact_hiking|person|person_a|-|fact|hobby:hiking|周末徒步|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [
+          "query_algorithm_art|fact_algorithm_art"
+        ],
+        "context": [
+          "query_algorithm_art|fact_algorithm_art"
+        ],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 1,
+        "context_characters": 288,
+        "extraction_latency_ms": 5.440199980512261,
+        "retrieval_latency_ms": [
+          108.91790012829006
+        ],
+        "context_latency_ms": [
+          0.03400002606213093
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "empty_query",
+      "category": "retrieval",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "empty_query",
+        "claims": [],
+        "facts": [
+          "fact_secret|person|person_a|-|fact|private:note|高重要度私人事实|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [],
+        "context": [],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 2,
+        "extraction_latency_ms": 4.520299844443798,
+        "retrieval_latency_ms": [
+          7.857999997213483
+        ],
+        "context_latency_ms": [
+          0.01209997572004795
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "person_group_isolation",
+      "category": "context",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "person_group_isolation",
+        "claims": [],
+        "facts": [
+          "fact_alias_a|person_group|person_a|group_a|fact|alias|本群称呼阿远|active|clear|self_report",
+          "fact_alias_b|person_group|person_a|group_b|fact|alias|本群称呼小远|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [
+          "query_alias_a|fact_alias_a"
+        ],
+        "context": [
+          "query_alias_a|fact_alias_a"
+        ],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 290,
+        "extraction_latency_ms": 4.156999988481402,
+        "retrieval_latency_ms": [
+          13.566200155764818
+        ],
+        "context_latency_ms": [
+          0.037999823689460754
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "historical_guard",
+      "category": "rebuild",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "historical_guard",
+        "claims": [
+          "event_old_home|person|person_a|profile:home|住在福州"
+        ],
+        "facts": [
+          "fact_current_home|person|person_a|-|fact|profile:home|住在上海|active|clear|self_report",
+          "fact_old_home|person|person_a|-|fact|profile:home|住在福州|superseded|clear|self_report"
+        ],
+        "evidence": [
+          "fact_old_home|event_old_home|person_a|rebuild|我住在福州"
+        ],
+        "relations": [
+          "fact_old_home|fact_current_home|contradicts"
+        ],
+        "retrieval": [
+          "query_current_home|fact_current_home"
+        ],
+        "context": [
+          "query_current_home|fact_current_home"
+        ],
+        "rebuild": {
+          "committed": 1,
+          "skipped": 0,
+          "receipts": 1,
+          "historical_regressions": 0
+        },
+        "extraction_requests": 1,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 287,
+        "extraction_latency_ms": 148.243100149557,
+        "retrieval_latency_ms": [
+          18.35569995455444
+        ],
+        "context_latency_ms": [
+          0.034899916499853134
+        ],
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "historical_social_read",
+      "category": "privacy",
+      "passed": true,
+      "failures": [],
+      "observation": {
+        "case_id": "historical_social_read",
+        "claims": [],
+        "facts": [
+          "fact_indirect|person|person_c|-|fact|interest|持续研究星空摄影|active|clear|self_report",
+          "fact_person|person|person_b|-|fact|interest|持续研究星空摄影|active|clear|self_report",
+          "fact_shared|person_group|person_b|group_a|fact|role|本群负责星空摄影|active|clear|self_report",
+          "fact_unshared|group|-|group_b|fact|project|准备星空摄影|active|clear|self_report"
+        ],
+        "evidence": [],
+        "relations": [],
+        "retrieval": [
+          "query_person|fact_person",
+          "query_shared|fact_shared"
+        ],
+        "context": [
+          "query_person|fact_person",
+          "query_shared|fact_shared"
+        ],
+        "rebuild": null,
+        "extraction_requests": 0,
+        "consolidation_requests": 0,
+        "query_embedding_requests": 0,
+        "context_characters": 586,
+        "extraction_latency_ms": 4.270099801942706,
+        "retrieval_latency_ms": [
+          10.155299911275506,
+          15.208099968731403,
+          0.07830001413822174,
+          0.07870001718401909
+        ],
+        "context_latency_ms": [
+          0.03760005347430706,
+          0.04029995761811733,
+          0.01019984483718872,
+          0.009600073099136353
+        ],
+        "error_code": null
+      }
+    }
+  ],
+  "metrics": {
+    "case_pass_rate": {
+      "value": 1.0,
+      "numerator": 19.0,
+      "denominator": 19.0,
+      "unit": "ratio"
+    },
+    "subject_attribution_accuracy": {
+      "value": 1.0,
+      "numerator": 12.0,
+      "denominator": 12.0,
+      "unit": "ratio"
+    },
+    "scope_attribution_accuracy": {
+      "value": 1.0,
+      "numerator": 12.0,
+      "denominator": 12.0,
+      "unit": "ratio"
+    },
+    "cross_person_contamination_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 10.0,
+      "unit": "ratio"
+    },
+    "cross_group_contamination_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 13.0,
+      "unit": "ratio"
+    },
+    "third_party_global_leak_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "bot_subject_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 2.0,
+      "unit": "ratio"
+    },
+    "unknown_subject_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "fact_accuracy": {
+      "value": 1.0,
+      "numerator": 27.0,
+      "denominator": 27.0,
+      "unit": "ratio"
+    },
+    "evidence_provenance_accuracy": {
+      "value": 1.0,
+      "numerator": 12.0,
+      "denominator": 12.0,
+      "unit": "ratio"
+    },
+    "fact_without_evidence_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 11.0,
+      "unit": "ratio"
+    },
+    "duplicate_evidence_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 12.0,
+      "unit": "ratio"
+    },
+    "source_event_mismatch_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 12.0,
+      "unit": "ratio"
+    },
+    "outbound_evidence_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "bot_evidence_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 2.0,
+      "unit": "ratio"
+    },
+    "blank_evidence_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "fact_state_accuracy": {
+      "value": 1.0,
+      "numerator": 27.0,
+      "denominator": 27.0,
+      "unit": "ratio"
+    },
+    "correction_resolution_accuracy": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "retraction_resolution_accuracy": {
+      "value": null,
+      "numerator": 0.0,
+      "denominator": 0.0,
+      "unit": "ratio"
+    },
+    "conflict_resolution_accuracy": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "conflict_coactivation_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "duplicate_active_fact_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 23.0,
+      "unit": "ratio"
+    },
+    "historical_regression_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "idempotency_failure_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "precision_at_k": {
+      "value": 1.0,
+      "numerator": 16.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "recall_at_k": {
+      "value": 1.0,
+      "numerator": 16.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "mean_reciprocal_rank": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "ndcg_at_k": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "wrong_target_retrieval_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "empty_query_fact_leak_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "context_precision": {
+      "value": 1.0,
+      "numerator": 16.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "context_recall": {
+      "value": 1.0,
+      "numerator": 16.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "wrong_subject_context_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "wrong_group_context_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 16.0,
+      "unit": "ratio"
+    },
+    "contested_context_leak_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "third_party_misattribution_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "rebuild_review_bypass_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "rebuild_duplicate_commit_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "rebuild_historical_overwrite_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "rebuild_receipt_accuracy": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "ratio"
+    },
+    "rebuild_resume_accuracy": {
+      "value": null,
+      "numerator": 0.0,
+      "denominator": 0.0,
+      "unit": "ratio"
+    },
+    "pipeline_error_rate": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 19.0,
+      "unit": "ratio"
+    },
+    "average_extraction_requests_per_event": {
+      "value": 0.8571428571428571,
+      "numerator": 12.0,
+      "denominator": 14.0,
+      "unit": "requests"
+    },
+    "average_consolidation_requests_per_claim": {
+      "value": 0.0,
+      "numerator": 0.0,
+      "denominator": 12.0,
+      "unit": "requests"
+    },
+    "average_query_embedding_requests_per_query": {
+      "value": 0.043478260869565216,
+      "numerator": 1.0,
+      "denominator": 23.0,
+      "unit": "requests"
+    },
+    "average_context_characters": {
+      "value": 245.21052631578948,
+      "numerator": 245.21052631578948,
+      "denominator": 1.0,
+      "unit": "characters"
+    },
+    "extraction_latency_p50_ms": {
+      "value": 16.49739989079535,
+      "numerator": 16.49739989079535,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "extraction_latency_p95_ms": {
+      "value": null,
+      "numerator": 0.0,
+      "denominator": 0.0,
+      "unit": "milliseconds"
+    },
+    "retrieval_latency_p50_ms": {
+      "value": 13.566200155764818,
+      "numerator": 13.566200155764818,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "retrieval_latency_p95_ms": {
+      "value": 20.43889998458326,
+      "numerator": 20.43889998458326,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "context_latency_p50_ms": {
+      "value": 0.03539980389177799,
+      "numerator": 0.03539980389177799,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "context_latency_p95_ms": {
+      "value": 0.043800100684165955,
+      "numerator": 0.043800100684165955,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "quality_suite_total_ms": {
+      "value": 986.9898995384574,
+      "numerator": 986.9898995384574,
+      "denominator": 1.0,
+      "unit": "milliseconds"
+    },
+    "total_model_requests": {
+      "value": 12.0,
+      "numerator": 12.0,
+      "denominator": 1.0,
+      "unit": "requests"
+    },
+    "total_query_embedding_requests": {
+      "value": 1.0,
+      "numerator": 1.0,
+      "denominator": 1.0,
+      "unit": "requests"
+    }
+  },
+  "gates": [
+    {
+      "metric": "case_pass_rate",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "subject_attribution_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "scope_attribution_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "cross_person_contamination_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "cross_group_contamination_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "third_party_global_leak_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "bot_subject_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "unknown_subject_acceptance_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "fact_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "evidence_provenance_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "fact_without_evidence_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "duplicate_evidence_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "source_event_mismatch_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "outbound_evidence_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "bot_evidence_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "blank_evidence_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "fact_state_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "correction_resolution_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "conflict_coactivation_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "duplicate_active_fact_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "precision_at_k",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 0.95,
+      "detail": ""
+    },
+    {
+      "metric": "recall_at_k",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 0.95,
+      "detail": ""
+    },
+    {
+      "metric": "mean_reciprocal_rank",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 0.95,
+      "detail": ""
+    },
+    {
+      "metric": "ndcg_at_k",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 0.95,
+      "detail": ""
+    },
+    {
+      "metric": "wrong_target_retrieval_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "empty_query_fact_leak_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "context_precision",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "context_recall",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "wrong_subject_context_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "wrong_group_context_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "contested_context_leak_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "historical_regression_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "idempotency_failure_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "rebuild_review_bypass_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "rebuild_duplicate_commit_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "rebuild_historical_overwrite_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    },
+    {
+      "metric": "rebuild_receipt_accuracy",
+      "passed": true,
+      "observed": 1.0,
+      "operator": ">=",
+      "threshold": 1.0,
+      "detail": ""
+    },
+    {
+      "metric": "pipeline_error_rate",
+      "passed": true,
+      "observed": 0.0,
+      "operator": "<=",
+      "threshold": 0.0,
+      "detail": ""
+    }
+  ],
+  "baseline_regressions": []
+}

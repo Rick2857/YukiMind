@@ -1,0 +1,1 @@
+"""External messaging platform adapters."""

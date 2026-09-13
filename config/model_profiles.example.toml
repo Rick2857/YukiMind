@@ -1,0 +1,51 @@
+schema_version = 3
+
+# Copy to config/model_profiles.toml to opt in to explicit task routing.
+# Secrets stay in environment variables; this file only names them.
+
+[profiles.pro]
+# For deepseek-flash (V4.1). Remove image_input for a text-only model.
+provider = "deepseek"
+protocol = "responses"
+base_url_env = "LLM_BASE_URL"
+api_key_env = "LLM_API_KEY"
+model_env = "LLM_MODEL"
+timeout_seconds = 120.0
+max_retries = 2
+default_temperature = 0.7
+default_max_output_tokens = 8192
+thinking_mode = "enabled"
+reasoning_effort = "low"
+reasoning_effort_env = "LLM_REASONING_EFFORT"
+structured_output_mode = "function_tool"
+capabilities = ["tools", "reasoning", "long_context", "image_input"]
+
+[profiles.flash]
+provider = "deepseek"
+protocol = "chat_completions"
+base_url_env = "LLM_FLASH_BASE_URL"
+api_key_env = "LLM_FLASH_API_KEY"
+model_env = "LLM_FLASH_MODEL"
+timeout_seconds = 30.0
+max_retries = 1
+default_temperature = 0.1
+default_max_output_tokens = 4096
+thinking_mode = "enabled"
+reasoning_effort = "low"
+structured_output_mode = "function_tool"
+capabilities = ["structured_output", "reasoning"]
+
+[routes]
+chat_agent = "pro"
+memory_extraction = "flash"
+memory_self_reflection = "flash"
+memory_consolidation = "flash"
+memory_dream = "flash"
+memory_attribution = "flash"
+relationship_evaluation = "flash"
+emoji_replacement = "flash"
+automation_text_generation = "flash"
+automation_agent = "pro"
+plugin_agent_session = "pro"
+utility_structured = "flash"
+conversation_compaction = "flash"

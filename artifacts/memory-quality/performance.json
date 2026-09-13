@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-08-01T10:45:18.889591Z",
+  "machine_class": "Windows-AMD64-python3.12",
+  "python_version": "3.12.13",
+  "sqlite_version": "3.53.1",
+  "scenario": {
+    "users": 100,
+    "facts_per_user": 100,
+    "groups": 10,
+    "chat_events": 100000,
+    "query_count": 50,
+    "keyset_batch_size": 1000
+  },
+  "populated_fact_count": 10000,
+  "active_embedded_fact_count": 9800,
+  "populated_event_count": 100000,
+  "plan_latency_ms": 282.0955999995931,
+  "keyset_scan_seconds": 10.534943399998156,
+  "keyset_events_per_second": 9492.21995820286,
+  "retrieval_p50_ms": 25.606999999581603,
+  "retrieval_p95_ms": 31.210699999064673,
+  "context_p50_ms": 0.06270000085351057,
+  "context_p95_ms": 0.10829999882844277,
+  "quality_suite_total_ms": 2753.442499997618,
+  "peak_memory_mib": 3.1060400009155273,
+  "model_request_count": 0,
+  "embedding_document_request_count": 20,
+  "embedding_query_request_count": 50
+}

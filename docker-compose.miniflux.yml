@@ -1,0 +1,9 @@
+services:
+  bot:
+    networks:
+      yuki-miniflux-network: {}
+
+networks:
+  yuki-miniflux-network:
+    name: yuki-miniflux-network
+    external: true

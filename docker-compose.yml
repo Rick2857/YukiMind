@@ -1,0 +1,121 @@
+name: qq-ai-bot
+
+services:
+  bot:
+    image: ghcr.io/rick2857/yukimind:${YUKI_VERSION:?missing}
+    platform: linux/amd64
+    pull_policy: missing
+    init: true
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      DATABASE_URL: sqlite+aiosqlite:////app/data/qq_ai_bot.db
+      WORKSPACE_DIRECTORY: /app/workspace
+      SOCIAL_TRANSFER_DIRECTORY: /app/social-transfer
+      SOCIAL_GATEWAY_TRANSFER_DIRECTORY: /yuki-transfer
+      SANDBOX_SOCKET: /run/yuki-sandbox/manager.sock
+      NAPCAT_CONFIG_OUTPUT: /app/napcat-config/onebot11.json
+      NAPCAT_REVERSE_WS_URL: ws://bot:8080/onebot/v11/ws
+      ONEBOT_ACCESS_TOKEN: ${ONEBOT_ACCESS_TOKEN:-replace-with-a-long-random-token}
+    expose:
+      - "8080"
+    volumes:
+      - ./data:/app/data
+      - ./workspace:/app/workspace
+      - ./social-transfer:/app/social-transfer
+      - /run/yuki-sandbox:/run/yuki-sandbox:ro
+      - ./data/speech:/data/speech
+      - speech-runtime:/run/yuki-speech
+      - ./napcat-config:/app/napcat-config
+      - ./config:/app/config:ro
+      - ./plugins:/app/plugins:ro
+      - ./.mcp.json:/app/.mcp.json:ro
+    networks:
+      - qq-ai-bot-network
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    stop_grace_period: 20s
+
+  genie-tts-worker:
+    profiles: ["speech"]
+    image: ghcr.io/rick2857/yukimind-genie-tts-worker:${YUKI_VERSION:?missing}
+    platform: linux/amd64
+    pull_policy: missing
+    init: true
+    restart: unless-stopped
+    network_mode: none
+    environment:
+      GENIE_DATA_DIR: /data/speech/genie_data
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      SPEECH_JP_KATAKANA_ENABLED: ${SPEECH_JP_KATAKANA_ENABLED:-false}
+      SPEECH_JP_KATAKANA_ASSET_DIR: /data/speech/japanese_frontend/models
+      SPEECH_JP_KATAKANA_LEXICON: /data/speech/japanese_frontend/lexicon.toml
+    command:
+      - --socket
+      - /run/yuki-speech/genie.sock
+      - --data-dir
+      - /data/speech/genie_data
+      - --speech-root
+      - /data/speech
+      - --idle-recycle-seconds
+      - ${SPEECH_WORKER_IDLE_RECYCLE_SECONDS:-300}
+    volumes:
+      - ./data/speech/genie_data:/data/speech/genie_data:ro
+      - ./data/speech/voices:/data/speech/voices:ro
+      - ./data/speech/cache:/data/speech/cache
+      - ./data/speech/japanese_frontend:/data/speech/japanese_frontend:ro
+      - speech-runtime:/run/yuki-speech
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; raise SystemExit(not os.path.exists('/run/yuki-speech/genie.sock'))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 30s
+
+  napcat:
+    profiles: ["napcat"]
+    image: ${NAPCAT_IMAGE:-mlikiowa/napcat-docker@sha256:1336a777f9a4f1f8cb89fef42f7548deacd3645919a067a50df5b66b5e77390e}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      bot:
+        condition: service_healthy
+    environment:
+      NAPCAT_UID: ${NAPCAT_UID:-0}
+      NAPCAT_GID: ${NAPCAT_GID:-0}
+      ACCOUNT: ${NAPCAT_ACCOUNT:-}
+      WEBUI_TOKEN: ${NAPCAT_WEBUI_TOKEN:-replace-with-a-long-random-webui-token}
+      WEBUI_PREFIX: ""
+    ports:
+      - "127.0.0.1:6099:6099"
+    volumes:
+      - ./napcat-data:/app/.config/QQ
+      - ./napcat-config:/app/napcat/config
+      - ./napcat-plugins:/app/napcat/plugins
+      - ./social-transfer:/yuki-transfer:ro
+    networks:
+      - qq-ai-bot-network
+    stop_grace_period: 30s
+
+networks:
+  qq-ai-bot-network:
+    name: qq-ai-bot-network
+    driver: bridge
+
+volumes:
+  speech-runtime:

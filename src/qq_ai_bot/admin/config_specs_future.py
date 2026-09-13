@@ -1,0 +1,92 @@
+"""Configuration declarations that affect only future records."""
+
+from __future__ import annotations
+
+from qq_ai_bot.admin.config_spec_helpers import (
+    _G,
+    _GGU,
+    _GU,
+    _field,
+    _spec,
+)
+from qq_ai_bot.admin.models import ConfigApplyMode, ConfigSpec
+
+
+def future_config_specs() -> tuple[ConfigSpec, ...]:
+    return (
+        _spec(
+            "relationship.initial_affection",
+            "新人物初始好感度",
+            "只影响之后首次建立关系记录的人物。",
+            aliases=("初始好感度",),
+            value_type="integer",
+            minimum=0,
+            maximum=100,
+            scopes=_GU,
+            mode=ConfigApplyMode.FUTURE_ONLY,
+            env_alias="RELATIONSHIP_INITIAL_AFFECTION",
+            getter=_field("relationship_initial_affection"),
+            settings_fields=("relationship_initial_affection",),
+            category="relationship",
+        ),
+        _spec(
+            "relationship.initial_trust",
+            "新人物初始信任度",
+            "只影响之后首次建立关系记录的人物。",
+            aliases=("初始信任度",),
+            value_type="integer",
+            minimum=0,
+            maximum=100,
+            scopes=_GU,
+            mode=ConfigApplyMode.FUTURE_ONLY,
+            env_alias="RELATIONSHIP_INITIAL_TRUST",
+            getter=_field("relationship_initial_trust"),
+            settings_fields=("relationship_initial_trust",),
+            category="relationship",
+        ),
+        _spec(
+            "web.source_retention_days",
+            "联网来源保留天数",
+            "之后运行的清理任务使用的新保留天数。",
+            aliases=("来源保留时间",),
+            value_type="integer",
+            minimum=1,
+            maximum=365,
+            scopes=_G,
+            mode=ConfigApplyMode.FUTURE_ONLY,
+            env_alias="WEB_SOURCE_RETENTION_DAYS",
+            getter=_field("web_source_retention_days"),
+            settings_fields=("web_source_retention_days",),
+            category="web",
+        ),
+        _spec(
+            "web.source_max_runs_per_conversation",
+            "每会话联网来源批次上限",
+            "之后新保存来源时允许保留的搜索批次数。",
+            aliases=("来源批次上限",),
+            value_type="integer",
+            minimum=1,
+            maximum=100,
+            scopes=_GGU,
+            mode=ConfigApplyMode.FUTURE_ONLY,
+            env_alias="WEB_SOURCE_MAX_RUNS_PER_CONVERSATION",
+            getter=_field("web_source_max_runs_per_conversation"),
+            settings_fields=("web_source_max_runs_per_conversation",),
+            category="web",
+        ),
+        _spec(
+            "vision.analysis_retention_days",
+            "视觉分析缓存保留天数",
+            "之后执行的清理任务使用的新视觉分析缓存保留天数。",
+            aliases=("视觉缓存保留时间",),
+            value_type="integer",
+            minimum=1,
+            maximum=365,
+            scopes=_G,
+            mode=ConfigApplyMode.FUTURE_ONLY,
+            env_alias="VISION_ANALYSIS_RETENTION_DAYS",
+            getter=_field("vision_analysis_retention_days"),
+            settings_fields=("vision_analysis_retention_days",),
+            category="vision",
+        ),
+    )

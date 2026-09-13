@@ -1,0 +1,283 @@
+{
+  "mcpServers": {
+    "mcd": {
+      "url": "https://mcp.mcd.cn",
+      "headers": {
+        "Authorization": "Bearer ${MCD_MCP_TOKEN}"
+      },
+      "lifecycle": "lazy",
+      "disabled": false,
+      "connectTimeoutSeconds": 15,
+      "requestTimeoutSeconds": 60,
+      "reconnectDelaySeconds": 5,
+      "yuki": {
+        "scope": "mcp.mcd",
+        "summary": "麦当劳官方菜单、门店、活动、优惠券、订单和积分服务",
+        "tags": ["麦当劳"],
+        "toolBundles": {
+          "order_planning": {
+            "scope": "mcp.mcd.order_planning",
+            "summary": "只读规划麦当劳到店或外送订单：查询地址与门店、菜单详情和价格，但不创建订单；缺少位置时先向用户询问",
+            "aliases": ["点餐", "菜单", "点麦当劳"],
+            "includeTools": [
+              "delivery-query-addresses",
+              "delivery-query-stores",
+              "query-nearby-stores",
+              "query-my-coupons",
+              "query-meals",
+              "query-meal-detail",
+              "calculate-price"
+            ]
+          },
+          "order": {
+            "scope": "mcp.mcd.order",
+            "summary": "查询地址与门店、菜单详情和价格，创建待支付订单并查询订单",
+            "aliases": ["下单", "点餐", "点单", "点麦当劳"],
+            "includeTools": [
+              "delivery-query-addresses",
+              "delivery-query-stores",
+              "query-nearby-stores",
+              "query-my-coupons",
+              "query-meals",
+              "query-meal-detail",
+              "calculate-price",
+              "create-order",
+              "query-order"
+            ]
+          }
+        },
+        "automation": {
+          "enabled": true,
+          "permission": "superuser",
+          "includeTools": [
+            "now-time-info",
+            "campaign-calendar",
+            "available-coupons",
+            "query-my-coupons",
+            "auto-bind-coupons",
+            "query-my-account",
+            "delivery-query-addresses",
+            "delivery-query-stores",
+            "query-nearby-stores",
+            "query-meals",
+            "query-meal-detail",
+            "calculate-price",
+            "create-order",
+            "order-list",
+            "query-order",
+            "mall-order-list",
+            "mall-order-detail"
+          ]
+        },
+        "toolAnnotations": {
+          "list-nutrition-foods": {"readOnlyHint": true, "idempotentHint": true},
+          "delivery-query-addresses": {"readOnlyHint": true, "idempotentHint": true},
+          "delivery-query-stores": {"readOnlyHint": true, "idempotentHint": true},
+          "query-meal-assistance": {"readOnlyHint": true, "idempotentHint": true},
+          "query-nearby-stores": {"readOnlyHint": true, "idempotentHint": true},
+          "query-store-coupons": {"readOnlyHint": true, "idempotentHint": true},
+          "query-meals": {"readOnlyHint": true, "idempotentHint": true},
+          "query-meal-detail": {"readOnlyHint": true, "idempotentHint": true},
+          "calculate-price": {"readOnlyHint": true, "idempotentHint": true},
+          "create-order": {"finalizeAfterCommit": true},
+          "query-order": {"readOnlyHint": true, "idempotentHint": true},
+          "order-list": {"readOnlyHint": true, "idempotentHint": true},
+          "campaign-calendar": {"readOnlyHint": true, "idempotentHint": true},
+          "available-coupons": {"readOnlyHint": true, "idempotentHint": true},
+          "query-my-coupons": {"readOnlyHint": true, "idempotentHint": true},
+          "query-my-account": {"readOnlyHint": true, "idempotentHint": true},
+          "mall-points-products": {"readOnlyHint": true, "idempotentHint": true},
+          "mall-product-detail": {"readOnlyHint": true, "idempotentHint": true},
+          "mall-order-list": {"readOnlyHint": true, "idempotentHint": true},
+          "mall-order-detail": {"readOnlyHint": true, "idempotentHint": true},
+          "now-time-info": {"readOnlyHint": true, "idempotentHint": true}
+        }
+      }
+    },
+    "netease_music": {
+      "url": "http://host.docker.internal:8766/mcp",
+      "lifecycle": "keep_alive",
+      "disabled": true,
+      "connectTimeoutSeconds": 10,
+      "requestTimeoutSeconds": 30,
+      "reconnectDelaySeconds": 5,
+      "includeTools": [
+        "music_search",
+        "get_recommendations",
+        "get_similar_songs",
+        "get_new_songs",
+        "get_rankings",
+        "get_songs",
+        "get_album",
+        "get_artist",
+        "get_playlist",
+        "get_lyrics",
+        "get_user_library",
+        "get_playlist_statistics"
+      ],
+      "yuki": {
+        "scope": "mcp.netease_music",
+        "summary": "网易云音乐的搜索、推荐、相似歌曲、新歌、榜单、资料、歌词和用户音乐库只读查询",
+        "tags": ["音乐", "网易云", "搜索", "推荐", "新歌", "榜单", "歌曲", "歌手", "专辑", "歌单", "歌词"],
+        "toolAnnotations": {
+          "music_search": {"readOnlyHint": true, "idempotentHint": true},
+          "get_recommendations": {"readOnlyHint": true, "idempotentHint": true},
+          "get_similar_songs": {"readOnlyHint": true, "idempotentHint": true},
+          "get_new_songs": {"readOnlyHint": true, "idempotentHint": true},
+          "get_rankings": {"readOnlyHint": true, "idempotentHint": true},
+          "get_songs": {"readOnlyHint": true, "idempotentHint": true},
+          "get_album": {"readOnlyHint": true, "idempotentHint": true},
+          "get_artist": {"readOnlyHint": true, "idempotentHint": true},
+          "get_playlist": {"readOnlyHint": true, "idempotentHint": true},
+          "get_lyrics": {"readOnlyHint": true, "idempotentHint": true},
+          "get_user_library": {"readOnlyHint": true, "idempotentHint": true},
+          "get_playlist_statistics": {"readOnlyHint": true, "idempotentHint": true}
+        }
+      }
+    },
+    "miniflux": {
+      "url": "http://miniflux-mcp:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MINIFLUX_MCP_TOKEN}"
+      },
+      "lifecycle": "keep_alive",
+      "disabled": true,
+      "connectTimeoutSeconds": 10,
+      "requestTimeoutSeconds": 60,
+      "reconnectDelaySeconds": 5,
+      "includeTools": [
+        "create_feed",
+        "delete_feed",
+        "get_feed",
+        "get_feeds",
+        "update_feed",
+        "refresh_feed",
+        "refresh_all_feeds",
+        "get_feed_entries",
+        "get_feed_entry",
+        "get_feed_icon",
+        "mark_feed_as_read",
+        "get_entries",
+        "get_entry",
+        "update_entry_status",
+        "toggle_starred",
+        "save_entry",
+        "fetch_original_content",
+        "mark_all_as_read",
+        "get_enclosure",
+        "get_icon",
+        "create_category",
+        "delete_category",
+        "get_categories",
+        "update_category",
+        "get_category_feeds",
+        "get_category_entries",
+        "get_category_entry",
+        "mark_category_as_read",
+        "refresh_category",
+        "discover",
+        "fetch_counters",
+        "get_version",
+        "healthcheck"
+      ],
+      "yuki": {
+        "scope": "mcp.miniflux",
+        "summary": "管理 RSS 订阅源和分类，阅读、收藏、保存与更新 Miniflux 文章状态",
+        "tags": ["RSS", "订阅", "订阅源", "文章", "未读", "阅读器", "Miniflux"],
+        "toolBundles": {
+          "subscriptions": {
+            "scope": "mcp.miniflux.subscriptions",
+            "summary": "发现、添加、删除、修改、刷新和查看 RSS 订阅源",
+            "includeTools": [
+              "create_feed",
+              "delete_feed",
+              "get_feed",
+              "get_feeds",
+              "update_feed",
+              "refresh_feed",
+              "refresh_all_feeds",
+              "get_feed_entries",
+              "get_feed_entry",
+              "get_feed_icon",
+              "mark_feed_as_read",
+              "discover",
+              "fetch_counters"
+            ]
+          },
+          "articles": {
+            "scope": "mcp.miniflux.articles",
+            "summary": "查询 RSS 文章，获取正文和附件，并更新已读、收藏与保存状态",
+            "includeTools": [
+              "get_entries",
+              "get_entry",
+              "update_entry_status",
+              "toggle_starred",
+              "save_entry",
+              "fetch_original_content",
+              "mark_all_as_read",
+              "get_enclosure",
+              "get_icon"
+            ]
+          },
+          "categories": {
+            "scope": "mcp.miniflux.categories",
+            "summary": "创建、删除、修改和查看 RSS 分类及分类文章",
+            "includeTools": [
+              "create_category",
+              "delete_category",
+              "get_categories",
+              "update_category",
+              "get_category_feeds",
+              "get_category_entries",
+              "get_category_entry",
+              "mark_category_as_read",
+              "refresh_category"
+            ]
+          }
+        },
+        "automation": {
+          "enabled": true,
+          "permission": "user",
+          "includeTools": [
+            "get_feed",
+            "get_feeds",
+            "get_feed_entries",
+            "get_feed_entry",
+            "get_entries",
+            "get_entry",
+            "fetch_original_content",
+            "get_categories",
+            "get_category_feeds",
+            "get_category_entries",
+            "get_category_entry",
+            "fetch_counters",
+            "get_version",
+            "healthcheck"
+          ]
+        },
+        "toolAnnotations": {
+          "get_feed": {"readOnlyHint": true, "idempotentHint": true},
+          "get_feeds": {"readOnlyHint": true, "idempotentHint": true},
+          "get_feed_entries": {"readOnlyHint": true, "idempotentHint": true},
+          "get_feed_entry": {"readOnlyHint": true, "idempotentHint": true},
+          "get_feed_icon": {"readOnlyHint": true, "idempotentHint": true},
+          "get_entries": {"readOnlyHint": true, "idempotentHint": true},
+          "get_entry": {"readOnlyHint": true, "idempotentHint": true},
+          "fetch_original_content": {"readOnlyHint": true, "idempotentHint": true, "openWorldHint": true},
+          "get_enclosure": {"readOnlyHint": true, "idempotentHint": true},
+          "get_icon": {"readOnlyHint": true, "idempotentHint": true},
+          "get_categories": {"readOnlyHint": true, "idempotentHint": true},
+          "get_category_feeds": {"readOnlyHint": true, "idempotentHint": true},
+          "get_category_entries": {"readOnlyHint": true, "idempotentHint": true},
+          "get_category_entry": {"readOnlyHint": true, "idempotentHint": true},
+          "discover": {"readOnlyHint": true, "idempotentHint": true, "openWorldHint": true},
+          "fetch_counters": {"readOnlyHint": true, "idempotentHint": true},
+          "get_version": {"readOnlyHint": true, "idempotentHint": true},
+          "healthcheck": {"readOnlyHint": true, "idempotentHint": true},
+          "delete_feed": {"destructiveHint": true},
+          "delete_category": {"destructiveHint": true}
+        }
+      }
+    }
+  }
+}
