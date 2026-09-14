@@ -87,6 +87,7 @@ from qq_ai_bot.emoji.models import (
     PendingReplyEffect,
 )
 from qq_ai_bot.llm.base import LLMEmptyResponseError
+from qq_ai_bot.memory.adaptive_behavior import AdaptiveBehaviorService
 from qq_ai_bot.memory.attribution import (
     MemoryAttributionWorker,
     MemoryExposure,
@@ -1522,6 +1523,10 @@ class ChatService:
                 time_service=self._time,
                 rollup_repository=rollup_repository,
                 rollup_service=rollup_service,
+                adaptive_behavior=AdaptiveBehaviorService(
+                    settings=settings,
+                    memories=self._memories,
+                ),
             )
         self._prompt_composer = prompt_composer or PromptComposer(settings)
         self._main_turns = MainAgentTurnService(

@@ -11,6 +11,11 @@ from qq_ai_bot.control_plane.principal import ControlPrincipal
 from qq_ai_bot.domain.conversations import ScopeType
 from qq_ai_bot.domain.messages import InboundMessage
 from qq_ai_bot.domain.profiles import UserProfileSnapshot
+from qq_ai_bot.memory.adaptive_behavior import (
+    AdaptiveBehaviorService,
+    parse_adaptive_behavior_fact,
+)
+from qq_ai_bot.memory.enums import MemoryStatus
 from qq_ai_bot.memory.rebuild.models import MemoryRebuildSelection
 from qq_ai_bot.memory.rebuild.service import MemoryRebuildService
 from qq_ai_bot.memory.service import MemoryFactService
@@ -36,6 +41,7 @@ class ProfileCommandHandler:
         control: ControlAccess,
         memory_rebuild: MemoryRebuildService | None = None,
         bot_display_name: str = "Yuki",
+        adaptive_behavior: AdaptiveBehaviorService | None = None,
     ) -> None:
         self._people = people
         self._memories = memories
@@ -45,6 +51,7 @@ class ProfileCommandHandler:
         self._control = control
         self._memory_rebuild = memory_rebuild
         self._bot_display_name = bot_display_name
+        self._adaptive_behavior = adaptive_behavior
 
     async def memory(self, *, actor: AdminActor, argument: str) -> str:
         if argument.strip().casefold().startswith("rebuild"):
@@ -106,6 +113,83 @@ class ProfileCommandHandler:
             "可用操作：list、add、update、delete、evidence、search、index、embedding、"
             "self-reflection。"
         )
+
+    async def rsi(self, *, actor: AdminActor, message: InboundMessage, argument: str) -> str:
+        """Report and operate the persona-bound L1 adaptive behavior defaults."""
+
+        if self._adaptive_behavior is None:
+            return "L1 行为自适应未装配。"
+        parts = argument.split()
+        operation = parts[0].casefold() if parts else "status"
+        try:
+            if operation in {"status", "rules"} and len(parts) <= 1:
+                active_facts = await self._adaptive_behavior.visible_facts(
+                    message,
+                    status=MemoryStatus.ACTIVE,
+                )
+                disabled_facts = await self._adaptive_behavior.visible_facts(
+                    message,
+                    status=MemoryStatus.INVALIDATED,
+                )
+                lines = [
+                    "L1 RSI：已启用",
+                    f"当前人设：{self._adaptive_behavior.persona_id[:12]}",
+                ]
+                current_count = 0
+                stale_count = 0
+                for listed_fact in active_facts:
+                    rule = parse_adaptive_behavior_fact(listed_fact)
+                    if rule is None:
+                        continue
+                    current = rule.persona_id == self._adaptive_behavior.persona_id
+                    current_count += int(current)
+                    stale_count += int(not current)
+                    if operation == "rules":
+                        state = "当前" if current else "旧人设"
+                        lines.append(f"- M{listed_fact.id} [{state}] {rule.dimension}={rule.value}")
+                lines.insert(2, f"当前规则：{current_count}；旧人设规则：{stale_count}")
+                lines.insert(3, f"已停用规则：{len(disabled_facts)}")
+                if operation == "rules" and len(lines) == 4:
+                    lines.append("- 暂无规则")
+                return "\n".join(lines)
+            if operation == "run" and len(parts) == 1:
+                result = await self._memory_admin.self_reflection_run(actor)
+                return (
+                    "L1 RSI 反思完成："
+                    f"处理 {result.completed_batches}/{result.attempted_batches} 个批次，"
+                    f"生成 {result.proposal_count} 条提案，写入 {result.committed_count} 条。"
+                )
+            if operation in {"disable", "restore", "rollback"}:
+                if len(parts) != 2 or not parts[1].isdigit():
+                    return f"格式：/ai rsi {operation} <fact_id>"
+                fact = await self._adaptive_behavior.get_rule_fact(int(parts[1]))
+                if fact is None:
+                    return "没有找到对应的 L1 规则。"
+                if operation == "disable":
+                    changed = await self._memory_admin.invalidate_fact(actor, fact.id)
+                    return "已停用该 L1 规则。" if changed else "规则未发生变化。"
+                if operation == "restore":
+                    restored = await self._memory_admin.restore_fact(actor, fact.id)
+                    return "已恢复该 L1 规则。" if restored is not None else "规则未发生变化。"
+                rule = parse_adaptive_behavior_fact(fact)
+                assert rule is not None
+                if rule.persona_id != self._adaptive_behavior.persona_id:
+                    return "不能把旧人设规则回滚到当前人设。"
+                active_fact = await self._adaptive_behavior.active_version(fact)
+                if active_fact is None:
+                    return "当前没有可回滚的同维度规则，请先 restore。"
+                if active_fact.id == fact.id:
+                    return "该规则已经是当前版本。"
+                await self._memory_admin.correct_fact(actor, active_fact.id, fact.content)
+                current_fact = await self._adaptive_behavior.active_version(fact)
+                return (
+                    f"已回滚为 M{current_fact.id}：{rule.dimension}={rule.value}。"
+                    if current_fact is not None and current_fact.content == fact.content
+                    else "回滚未完成。"
+                )
+        except (PermissionError, RuntimeError, ValueError) as exc:
+            return f"L1 RSI 操作未完成：{exc}"
+        return "格式：/ai rsi status|rules|run|disable <id>|restore <id>|rollback <id>"
 
     async def _memory_rebuild_command(self, actor: AdminActor, argument: str) -> str:
         if self._memory_rebuild is None:

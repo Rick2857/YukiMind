@@ -33,6 +33,7 @@ from qq_ai_bot.event_prompt import (
     external_event_digest_metadata_item,
     recent_external_event_digest,
 )
+from qq_ai_bot.memory.adaptive_behavior import AdaptiveBehaviorService
 from qq_ai_bot.memory.attribution import MemoryExposure, MemoryExposureSource
 from qq_ai_bot.memory.context import (
     MemoryContextService,
@@ -115,6 +116,7 @@ class AssembledContext:
     history_event_fragments: tuple[tuple[tuple[int, ...], ChatMessage], ...] = ()
     current_event_id: int | None = None
     projection_scope: str = ""
+    adaptive_behavior: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +172,7 @@ class ContextAssembler:
         time_service: TimeContextService,
         rollup_repository: ConversationRollupRepository,
         rollup_service: ConversationRollupService,
+        adaptive_behavior: AdaptiveBehaviorService | None = None,
     ) -> None:
         self._settings = settings
         self._ledger = ledger
@@ -179,6 +182,7 @@ class ContextAssembler:
         self._time = time_service
         self._rollups = rollup_repository
         self._rollup_service = rollup_service
+        self._adaptive_behavior = adaptive_behavior
 
     @staticmethod
     async def assemble_automation(
@@ -601,6 +605,11 @@ class ContextAssembler:
             over_budget,
         )
         await self._validate_history_source(snapshot, current_event)
+        adaptive_behavior = (
+            await self._adaptive_behavior.prompt_rules(inbound)
+            if self._adaptive_behavior is not None
+            else ()
+        )
         return AssembledContext(
             metadata_payload=metadata_payload,
             history_messages=history_messages,
@@ -609,6 +618,7 @@ class ContextAssembler:
             current_time=current_time,
             current_relationship=current_relationship,
             metrics=metrics,
+            adaptive_behavior=adaptive_behavior,
             visible_event_ids=bounded_messages.visible_event_ids,
             external_events=external_events,
             memory_turn_id=recall_turn.turn_id if recall_turn is not None else "",
