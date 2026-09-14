@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### L1 行为自适应（受控 RSI）
+
+- 新增 `adaptive_behavior:v1:<persona_id>:<dimension>` 形式的 SELF preference，只覆盖
+  `response_length`、`explanation_style`、`initiative` 三个维度的枚举默认值。不新增 Alembic
+  revision，不引入自由文本规则；身份、语气、安全边界和工具权限始终不由 L1 定义。
+- Self Reflection 只有在用户明确要求以后持续采用某种方式，或至少两条独立 Evidence 支持同一
+  偏好时，才允许 create/correct/invalidate L1 规则；每条规则强制 `current_scope`、
+  `self_preference`、`kind=preference`、至少两个真实 `event_N`/`tool_N` evidence，且证据必须来自
+  本批次已知集合，否则整条提案失败关闭。
+- persona 指纹取已解析的 `SYSTEM_PROMPT`/`SYSTEM_PROMPT_FILE` 的 SHA-256。人设变更后旧 persona
+  的 L1 规则立即停止注入与加载，数据仍保留在库中供审计和回滚，新人设从空规则开始学习。
+- L1 只作为 `context.adaptive_behavior` 低优先级 CONTEXT fragment（priority 60）注入；核心人格
+  （priority 100）、当前用户明确要求和当前场景策略始终优先，冲突时忽略该默认值。
+- 超级管理员新增 `/ai rsi status|rules|run|disable <fact_id>|restore <fact_id>|rollback <fact_id>`。
+  规则变更复用既有 Memory 版本链、审计与冲突处理；回滚只允许同 persona 的规则，旧人设规则不能
+  回滚到当前人设；带图片的轮次与其他确定性写入一样关闭 `run`/`disable`/`restore`/`rollback`。
+- 修复 SELF 事实在管理员 correct/restore 路径丢失可见性边界的问题：`MemoryAdminService` 的
+  correct/restore/invalidate 现在把 `visibility_type`/`visibility_user_id`/`visibility_group_id`
+  一并交给 `ResolvedSubject`，`MemoryFactService.correct_fact`/`restore_fact` 重建事实时也保留这三个
+  字段。此前任何 SELF 事实（含 `/ai memory correct|restore`）都会因
+  `self memory visibility does not match its boundary` 失败。
+
 ## 3.8.2 - 2026-09-14
 
 ### Files, media, search and memory follow-up

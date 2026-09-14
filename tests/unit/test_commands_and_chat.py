@@ -19,9 +19,17 @@ from qq_ai_bot.domain.messages import (
 )
 from qq_ai_bot.domain.profiles import UserProfileSnapshot
 from qq_ai_bot.llm.fake import FakeLLMProvider
+from qq_ai_bot.memory.adaptive_behavior import (
+    AdaptiveBehaviorService,
+    adaptive_behavior_key,
+    persona_fingerprint,
+)
 from qq_ai_bot.memory.enums import (
+    MemoryAuthority,
+    MemoryKind,
     MemoryScopeType,
     MemorySourceType,
+    SelfMemoryVisibility,
 )
 from qq_ai_bot.memory.models import MemoryFactCreate
 from qq_ai_bot.memory.repository import MemoryFactRepository
@@ -371,6 +379,140 @@ async def test_superuser_memory_search_and_index_diagnostics(database: Database)
         status_sender,
     )
     assert "缺失 0，孤儿 0" in status_sender.messages[0].text
+
+
+@pytest.mark.asyncio
+async def test_superuser_rsi_commands_report_and_disable_l1_rules(database: Database) -> None:
+    settings = make_settings(database.url)
+    harness = build_harness(database, settings)
+    persona_id = persona_fingerprint(settings.system_prompt)
+    memories = MemoryFactService(MemoryFactRepository(database))
+
+    def rule(memory_key: str, content: str) -> MemoryFactCreate:
+        return MemoryFactCreate(
+            scope_type=MemoryScopeType.SELF,
+            visibility_type=SelfMemoryVisibility.PRIVATE,
+            visibility_user_id="9000",
+            kind=MemoryKind.PREFERENCE,
+            memory_key=memory_key,
+            category="self_preference",
+            content=content,
+            importance=3,
+            confidence=0.9,
+            source_type=MemorySourceType.AUTOMATIC,
+            authority=MemoryAuthority.AGENT_REFLECTION,
+        )
+
+    current = await memories.remember(
+        rule(adaptive_behavior_key(persona_id, "response_length"), "concise")
+    )
+    stale = await memories.remember(
+        rule(adaptive_behavior_key("b" * 64, "initiative"), "proactive")
+    )
+
+    status_sender = MemorySender()
+    await harness.processor.handle(
+        inbound("/ai rsi status", message_id="rsi-status", user_id="9000"),
+        status_sender,
+    )
+    status_text = status_sender.messages[0].text
+    assert "L1 RSI：已启用" in status_text
+    assert f"当前人设：{persona_id[:12]}" in status_text
+    assert "当前规则：1；旧人设规则：1" in status_text
+    assert "已停用规则：0" in status_text
+
+    rules_sender = MemorySender()
+    await harness.processor.handle(
+        inbound("/ai rsi rules", message_id="rsi-rules", user_id="9000"),
+        rules_sender,
+    )
+    rules_text = rules_sender.messages[0].text
+    assert f"- M{current.id} [当前] response_length=concise" in rules_text
+    assert f"- M{stale.id} [旧人设] initiative=proactive" in rules_text
+
+    disable_sender = MemorySender()
+    await harness.processor.handle(
+        inbound(f"/ai rsi disable {stale.id}", message_id="rsi-disable", user_id="9000"),
+        disable_sender,
+    )
+    assert "已停用该 L1 规则。" in disable_sender.messages[0].text
+
+    after_sender = MemorySender()
+    await harness.processor.handle(
+        inbound("/ai rsi status", message_id="rsi-status-after", user_id="9000"),
+        after_sender,
+    )
+    after_text = after_sender.messages[0].text
+    assert "当前规则：1；旧人设规则：0" in after_text
+    assert "已停用规则：1" in after_text
+
+    restore_sender = MemorySender()
+    await harness.processor.handle(
+        inbound(f"/ai rsi restore {stale.id}", message_id="rsi-restore", user_id="9000"),
+        restore_sender,
+    )
+    assert "已恢复该 L1 规则。" in restore_sender.messages[0].text
+
+    denied_sender = MemorySender()
+    await harness.processor.handle(
+        inbound("/ai rsi status", message_id="rsi-status-user"),
+        denied_sender,
+    )
+    assert "权限不足：该命令仅限超级管理员。" in denied_sender.messages[0].text
+
+
+@pytest.mark.asyncio
+async def test_superuser_rsi_rollback_restores_previous_default(database: Database) -> None:
+    settings = make_settings(database.url)
+    harness = build_harness(database, settings)
+    persona_id = persona_fingerprint(settings.system_prompt)
+    memories = MemoryFactService(MemoryFactRepository(database))
+    memory_key = adaptive_behavior_key(persona_id, "response_length")
+    first = await memories.remember(
+        MemoryFactCreate(
+            scope_type=MemoryScopeType.SELF,
+            visibility_type=SelfMemoryVisibility.PRIVATE,
+            visibility_user_id="9000",
+            kind=MemoryKind.PREFERENCE,
+            memory_key=memory_key,
+            category="self_preference",
+            content="concise",
+            importance=3,
+            confidence=0.9,
+            source_type=MemorySourceType.AUTOMATIC,
+            authority=MemoryAuthority.AGENT_REFLECTION,
+        )
+    )
+    await memories.remember(
+        MemoryFactCreate(
+            scope_type=MemoryScopeType.SELF,
+            visibility_type=SelfMemoryVisibility.PRIVATE,
+            visibility_user_id="9000",
+            kind=MemoryKind.PREFERENCE,
+            memory_key=memory_key,
+            category="self_preference",
+            content="detailed",
+            importance=3,
+            confidence=0.9,
+            source_type=MemorySourceType.AUTOMATIC,
+            authority=MemoryAuthority.AGENT_REFLECTION,
+        )
+    )
+
+    sender = MemorySender()
+    await harness.processor.handle(
+        inbound(f"/ai rsi rollback {first.id}", message_id="rsi-rollback", user_id="9000"),
+        sender,
+    )
+    rollback_text = sender.messages[0].text
+    assert rollback_text.startswith("已回滚为 M")
+    assert "response_length=concise" in rollback_text
+
+    injected = await AdaptiveBehaviorService(
+        settings=settings,
+        memories=memories,
+    ).prompt_rules(inbound("/ai rsi status", message_id="rsi-rollback-check", user_id="9000"))
+    assert [entry["default"] for entry in injected] == ["concise"]
 
 
 @pytest.mark.asyncio

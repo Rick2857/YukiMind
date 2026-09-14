@@ -24,6 +24,7 @@ from qq_ai_bot.domain.messages import InboundMessage, OutboundMessage
 from qq_ai_bot.domain.profiles import UserProfileSnapshot
 from qq_ai_bot.emoji.admin import EmojiAdminService
 from qq_ai_bot.mcp.admin import MCPCommandHandler
+from qq_ai_bot.memory.adaptive_behavior import AdaptiveBehaviorService
 from qq_ai_bot.memory.rebuild.service import MemoryRebuildService
 from qq_ai_bot.memory.service import MemoryFactService
 from qq_ai_bot.model_runtime.repository import ModelInvocationRepository
@@ -111,6 +112,7 @@ class CommandService:
         self._mcp_commands = mcp_commands
         self._memory_rebuild = memory_rebuild
         self._control = ControlAccess(people._database, superuser_ids=settings.superusers)
+        self._adaptive_behavior = AdaptiveBehaviorService(settings=settings, memories=memories)
         self._profile_commands = ProfileCommandHandler(
             people=people,
             memories=memories,
@@ -120,6 +122,7 @@ class CommandService:
             control=self._control,
             memory_rebuild=memory_rebuild,
             bot_display_name=settings.bot_display_name,
+            adaptive_behavior=self._adaptive_behavior,
         )
         self._config_commands = ConfigCommandHandler(
             config_admin=config_admin,
@@ -185,6 +188,8 @@ class CommandService:
             return operation in {"use", "reload", "cache", "test"}
         if command is CommandName.MCP:
             return operation in {"refresh", "reconnect", "enable", "disable", "doctor"}
+        if command is CommandName.RSI:
+            return operation not in {"", "status", "rules"}
         return False
 
     async def execute(
@@ -514,6 +519,12 @@ class CommandService:
                 if not recent_errors:
                     lines.append("- 无")
                 text = "\n".join(lines)
+        elif command is CommandName.RSI:
+            text = await self._profile_commands.rsi(
+                actor=actor,
+                message=message,
+                argument=argument,
+            )
         elif command is CommandName.MCP:
             if self._mcp_commands is None:
                 text = "MCP 子系统尚未初始化"
@@ -560,6 +571,8 @@ class CommandService:
             "/ai emoji stats|cleanup|doctor|import\n"
             "/ai voice status|profiles|show|use|styles|test|reload|cache cleanup\n"
             "/ai model stats（超级管理员）\n"
+            "/ai rsi status|rules|run|disable <fact_id>|restore <fact_id>|rollback <fact_id>"
+            "（超级管理员）\n"
             "/ai mcp list|show|status|tools|search|refresh|reconnect|enable|disable|doctor\n"
             "/ai on|off（超级管理员，当前群；on 可恢复暂停的群路由）\n"
             "/ai group <群号> on|off（超级管理员）\n"

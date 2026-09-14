@@ -10,6 +10,11 @@ from qq_ai_bot.domain.conversations import ScopeType
 from qq_ai_bot.domain.identity import AuthorKind
 from qq_ai_bot.domain.memory_config import MemoryConfigScope
 from qq_ai_bot.event_prompt import ChatEventPromptRenderer
+from qq_ai_bot.memory.adaptive_behavior import (
+    adaptive_behavior_reflection_instruction,
+    persona_fingerprint,
+    validate_adaptive_behavior_change,
+)
 from qq_ai_bot.memory.claim_candidates import (
     MemoryClaimCandidate,
     MemoryClaimCandidateRepository,
@@ -195,6 +200,7 @@ class SelfReflectionService:
                     f"{_INSTRUCTION.format(bot_name=self._settings.bot_display_name)}\n"
                     f"{_EPISODE_INSTRUCTION.format(timezone=self._settings.memory_self_reflection_timezone)}\n\n"
                     f"{_EPISODE_EVIDENCE_INSTRUCTION}\n"
+                    f"{adaptive_behavior_reflection_instruction(persona_fingerprint(self._settings.system_prompt))}\n"
                     f"【{self._settings.bot_display_name} 共享核心人格】\n"
                     f"{self._settings.bot_persona}\n\n"
                     f"【本次结构化记忆任务的归类与价值合同】\n{_VALUE_INSTRUCTION}"
@@ -527,6 +533,20 @@ class SelfReflectionService:
             raise ValueError("unknown fact alias")
         if proposal.merge_fact_ref and merge_fact is None:
             raise ValueError("unknown merge fact alias")
+        adaptive_key = proposal.memory_key or (fact.memory_key if fact is not None else None)
+        if validate_adaptive_behavior_change(
+            operation=proposal.operation.value,
+            memory_key=adaptive_key,
+            content=proposal.content,
+            category=proposal.category or (fact.category if fact is not None else None),
+            kind=proposal.kind or (fact.kind if fact is not None else None),
+            visibility=proposal.visibility.value,
+            evidence_refs=proposal.evidence_refs,
+            current_persona_id=persona_fingerprint(self._settings.system_prompt),
+        ):
+            known_evidence = {*event_map, *tool_map}
+            if any(ref not in known_evidence for ref in proposal.evidence_refs):
+                raise ValueError("adaptive behavior referenced unknown evidence")
         evidence_ref = proposal.evidence_refs[0]
         event = event_map.get(evidence_ref)
         tool = tool_map.get(evidence_ref)

@@ -176,6 +176,21 @@ class PromptComposer:
                     },
                 )
             )
+        if context.adaptive_behavior:
+            contributions.append(
+                PromptContribution(
+                    id="context.adaptive_behavior",
+                    channel=PromptChannel.CONTEXT,
+                    trust=PromptTrust.TRUSTED,
+                    priority=60,
+                    payload={
+                        "defaults": list(context.adaptive_behavior),
+                        "precedence": (
+                            "仅作默认行为；核心人格、当前用户明确要求和当前场景策略优先。"
+                        ),
+                    },
+                )
+            )
         if context.recent_delivery:
             contributions.append(
                 PromptContribution(

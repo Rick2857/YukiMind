@@ -109,8 +109,10 @@ jobs:
           count="$(printf '%s\n' "$output" | sed -nE 's/^([0-9]+) tests? collected.*$/\1/p' | tail -n 1)"
           test -n "$count"
           # Includes runtime recovery, whole-delivery and real three-segment protocol gates.
-          if (( count > 885 )); then
-            echo "test budget exceeded: $count collected (maximum 885)" >&2
+          # Raised 885 -> 900 for the L1 adaptive-behavior safety gates: closed-enum
+          # proposal validation, >=2 independent evidence, and persona-change isolation.
+          if (( count > 900 )); then
+            echo "test budget exceeded: $count collected (maximum 900)" >&2
             exit 1
           fi
           required_tests=(

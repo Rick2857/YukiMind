@@ -35,6 +35,7 @@ class CommandName(StrEnum):
     VOICE = "voice"
     MODEL = "model"
     MCP = "mcp"
+    RSI = "rsi"
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,4 +170,5 @@ def command_requires_superuser(command: CommandName) -> bool:
         CommandName.CONFIG,
         CommandName.EMOJI,
         CommandName.MODEL,
+        CommandName.RSI,
     }
